@@ -272,7 +272,10 @@ final class Controller: NSObject, NSApplicationDelegate, NSWindowDelegate, NSTex
             let item = NSButton(frame: NSRect(x: 0, y: CGFloat(matches.count - i - 1) * row, width: width - 20, height: row))
             item.isBordered = false; item.title = ""; item.target = self; item.action = #selector(clicked(_:)); item.tag = i; item.wantsLayer = true; item.layer?.cornerRadius = 12; item.layer?.backgroundColor = (i == selection ? NSColor.white.withAlphaComponent(0.18) : .clear).cgColor
             if i == matches.count - 1 {
-                let mask = CAShapeLayer(); mask.path = resultHighlightPath(in: item.bounds, bottomRadius: launcherCornerRadius - 10); item.layer?.mask = mask
+                let mask = CAShapeLayer()
+                var flip = CGAffineTransform(translationX: 0, y: item.bounds.height).scaledBy(x: 1, y: -1)
+                mask.path = resultHighlightPath(in: item.bounds, bottomRadius: launcherCornerRadius - 10).copy(using: &flip)
+                item.layer?.mask = mask
             }
             let icon = NSImageView(frame: NSRect(x: 12, y: 7, width: 40, height: 40)); icon.image = app.icon; item.addSubview(icon)
             let label = NSTextField(labelWithString: app.name); label.font = .systemFont(ofSize: 18, weight: .medium); label.textColor = .white; label.frame = NSRect(x: 64, y: app.duplicate ? 25 : 16, width: width - 120, height: 24); item.addSubview(label)

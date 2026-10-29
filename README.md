@@ -8,4 +8,4 @@ Build a signed local app with `./scripts/build-app.sh`, or open `RocketUp.xcodep
 
 For App Store releases, `./scripts/build-app-store.sh` archives and exports with automatic signing; `--upload` uploads the archive. Xcode Cloud lifecycle scripts run search checks and set the build number and tagged release version. The Cloud workflow and App Store Connect listing still need configuration.
 
-The 50 ms key-to-completed-animation target needs end-to-end measurement on real Macs; search computation alone has been measured in the integration test. Display selection currently uses AppKit's main screen and has not been verified against Spotlight on multiple monitors. User-folder selection and bookmark restoration have been checked interactively on this Mac.
+The results panel resizes over 200 ms; search computation alone has been measured in the integration test. Display selection currently uses AppKit's main screen and has not been verified against Spotlight on multiple monitors. User-folder selection and bookmark restoration have been checked interactively on this Mac.

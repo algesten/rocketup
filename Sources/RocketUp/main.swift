@@ -3,6 +3,7 @@ import Carbon
 import CoreServices
 import ServiceManagement
 import Darwin
+import QuartzCore
 
 let userHome = getpwuid(getuid()).map { String(cString: $0.pointee.pw_dir) } ?? NSHomeDirectory()
 
@@ -239,8 +240,11 @@ final class Controller: NSObject, NSApplicationDelegate, NSWindowDelegate, NSTex
         list.subviews.forEach { $0.removeFromSuperview() }
         let height = header + CGFloat(matches.count) * row
         var frame = panel.frame; frame.origin.y += frame.height - height; frame.size.height = height
-        // A short animation completes within the 50 ms interaction budget.
-        NSAnimationContext.runAnimationGroup { c in c.duration = 0.035; panel.animator().setFrame(frame, display: true) }
+        NSAnimationContext.runAnimationGroup { c in
+            c.duration = 0.2
+            c.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+            panel.animator().setFrame(frame, display: true)
+        }
         let listHeight = CGFloat(matches.count) * row
         list.frame = NSRect(x: 10, y: panel.contentView!.bounds.height - header - listHeight + 8, width: width - 20, height: listHeight)
         for (i, app) in matches.enumerated() {

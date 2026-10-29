@@ -220,7 +220,9 @@ final class Controller: NSObject, NSApplicationDelegate, NSWindowDelegate, NSTex
         let screen = NSScreen.main ?? NSScreen.screens.first!
         let frame = screen.visibleFrame
         panel.setFrameOrigin(NSPoint(x: frame.midX - width / 2, y: frame.maxY - frame.height * 0.22 - panel.frame.height))
-        panel.alphaValue = 0; panel.makeKeyAndOrderFront(nil); NSApp.activate(ignoringOtherApps: true); panel.makeFirstResponder(field); field.currentEditor()?.selectAll(nil)
+        panel.alphaValue = 0; panel.makeKeyAndOrderFront(nil); NSApp.activate(ignoringOtherApps: true); panel.makeFirstResponder(field)
+        (field.currentEditor() as? NSTextView)?.allowsUndo = true
+        field.currentEditor()?.selectAll(nil)
         NSAnimationContext.runAnimationGroup { c in c.duration = 0.05; panel.animator().alphaValue = 1 }
     }
     func hide() {
@@ -306,8 +308,21 @@ final class SettingsWindow: NSWindow {
     @objc func chooseApps() { controller?.chooseUserApplications() }
     @objc func toggleLogin(_ sender: NSButton) { do { if sender.state == .on { try SMAppService.mainApp.register() } else { try SMAppService.mainApp.unregister() } } catch { sender.state = SMAppService.mainApp.status == .enabled ? .on : .off; NSAlert(error: error).runModal() } }
 }
+func makeMainMenu(controller: Controller) -> NSMenu {
+let menu = NSMenu(); let appItem = NSMenuItem(); menu.addItem(appItem); let appMenu = NSMenu(); appMenu.addItem(withTitle: "Settings…", action: #selector(Controller.openSettings), keyEquivalent: ",").target = controller; appItem.submenu = appMenu
+let editItem = NSMenuItem(); menu.addItem(editItem)
+let editMenu = NSMenu(title: "Edit"); editItem.submenu = editMenu
+editMenu.addItem(withTitle: "Undo", action: Selector(("undo:")), keyEquivalent: "z")
+let redo = editMenu.addItem(withTitle: "Redo", action: Selector(("redo:")), keyEquivalent: "Z"); redo.keyEquivalentModifierMask = [.command, .shift]
+editMenu.addItem(.separator())
+editMenu.addItem(withTitle: "Cut", action: #selector(NSText.cut(_:)), keyEquivalent: "x")
+editMenu.addItem(withTitle: "Copy", action: #selector(NSText.copy(_:)), keyEquivalent: "c")
+editMenu.addItem(withTitle: "Paste", action: #selector(NSText.paste(_:)), keyEquivalent: "v")
+editMenu.addItem(withTitle: "Select All", action: #selector(NSText.selectAll(_:)), keyEquivalent: "a")
+return menu
+}
 let app = NSApplication.shared
 let controller = Controller()
 app.delegate = controller
-let menu = NSMenu(); let appItem = NSMenuItem(); menu.addItem(appItem); let appMenu = NSMenu(); appMenu.addItem(withTitle: "Settings…", action: #selector(Controller.openSettings), keyEquivalent: ",").target = controller; appItem.submenu = appMenu; app.mainMenu = menu
+app.mainMenu = makeMainMenu(controller: controller)
 app.run()

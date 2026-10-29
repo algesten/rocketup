@@ -68,6 +68,7 @@ print("Search computation worst observed: \(String(format: "%.2f", maxSearch)) m
 let controller = Controller()
 controller.startIndex()
 controller.createPanel()
+app.mainMenu = makeMainMenu(controller: controller)
 let testShortcut = Shortcut(keyCode: UInt16(kVK_F19), modifiers: [.control, .option, .shift])!
 precondition(controller.register(testShortcut), "Could not register global test shortcut")
 let nextShortcut = Shortcut(keyCode: UInt16(kVK_F18), modifiers: [.control, .option, .shift])!
@@ -78,6 +79,13 @@ precondition(controller.command(#selector(NSResponder.cancelOperation(_:))))
 precondition(controller.field.stringValue.isEmpty)
 controller.show()
 precondition(controller.panel.isVisible)
+controller.field.stringValue = "sample"
+controller.panel.makeFirstResponder(controller.field)
+guard let editor = controller.field.currentEditor() as? NSTextView else { fatalError("Search editor unavailable") }
+editor.setSelectedRange(NSRange(location: 0, length: 0))
+let selectAll = NSEvent.keyEvent(with: .keyDown, location: .zero, modifierFlags: .command, timestamp: 0, windowNumber: controller.panel.windowNumber, context: nil, characters: "a", charactersIgnoringModifiers: "a", isARepeat: false, keyCode: UInt16(kVK_ANSI_A))!
+precondition(app.mainMenu!.performKeyEquivalent(with: selectAll), "Command-A was not handled")
+precondition(editor.selectedRange() == NSRange(location: 0, length: 6), "Command-A did not select the search text")
 precondition(wait { !controller.index.entries.isEmpty })
 controller.field.stringValue = "s"
 controller.refresh()

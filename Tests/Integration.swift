@@ -86,6 +86,7 @@ UserDefaults.standard.removeObject(forKey: "showMenuBarIcon")
 precondition(controller.menuBarIconVisible, "Menu bar icon should be enabled by default")
 controller.updateMenuBarIcon()
 precondition(controller.statusItem != nil && controller.statusItem?.menu?.items.map(\.title) == ["Show Launcher", "Settings…"])
+precondition(controller.statusItem?.button?.image?.isTemplate == true && controller.statusItem?.button?.image?.size == NSSize(width: 18, height: 18), "Menu bar icon is missing")
 let testShortcut = Shortcut(keyCode: UInt16(kVK_F19), modifiers: [.control, .option, .shift])!
 precondition(controller.register(testShortcut), "Could not register global test shortcut")
 precondition(controller.showLauncherItem?.keyEquivalent == testShortcut.keyEquivalent && controller.showLauncherItem?.keyEquivalentModifierMask == testShortcut.modifiers, "Menu shortcut did not update")

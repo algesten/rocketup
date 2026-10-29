@@ -128,6 +128,26 @@ final class Index {
 
 private let launcherCornerRadius: CGFloat = 35
 
+func menuBarRocketImage() -> NSImage {
+    let image = NSImage(size: NSSize(width: 18, height: 18), flipped: false) { _ in
+        let rocket = NSBezierPath()
+        rocket.move(to: NSPoint(x: 9, y: 17))
+        rocket.curve(to: NSPoint(x: 5, y: 7), controlPoint1: NSPoint(x: 6, y: 15), controlPoint2: NSPoint(x: 5, y: 11))
+        rocket.line(to: NSPoint(x: 2, y: 5)); rocket.line(to: NSPoint(x: 2, y: 2.5)); rocket.line(to: NSPoint(x: 5.5, y: 4))
+        rocket.line(to: NSPoint(x: 6.5, y: 2.5)); rocket.line(to: NSPoint(x: 11.5, y: 2.5)); rocket.line(to: NSPoint(x: 12.5, y: 4))
+        rocket.line(to: NSPoint(x: 16, y: 2.5)); rocket.line(to: NSPoint(x: 16, y: 5)); rocket.line(to: NSPoint(x: 13, y: 7))
+        rocket.curve(to: NSPoint(x: 9, y: 17), controlPoint1: NSPoint(x: 13, y: 11), controlPoint2: NSPoint(x: 12, y: 15))
+        rocket.close()
+        rocket.appendOval(in: NSRect(x: 7.5, y: 9, width: 3, height: 3))
+        rocket.windingRule = .evenOdd
+        NSColor.black.setFill(); rocket.fill()
+        return true
+    }
+    image.isTemplate = true
+    image.accessibilityDescription = "Rocket Up"
+    return image
+}
+
 func resultHighlightPath(in bounds: CGRect, bottomRadius: CGFloat) -> CGPath {
     let topRadius: CGFloat = 12
     let x = bounds.minX, y = bounds.minY, right = bounds.maxX, top = bounds.maxY
@@ -215,7 +235,7 @@ final class Controller: NSObject, NSApplicationDelegate, NSWindowDelegate, NSTex
         }
         guard statusItem == nil else { return }
         let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
-        item.button?.image = NSImage(systemSymbolName: "rocket.fill", accessibilityDescription: "Rocket Up")
+        item.button?.image = menuBarRocketImage()
         let menu = NSMenu(); menu.autoenablesItems = false
         let show = NSMenuItem(title: "Show Launcher", action: #selector(showLauncher(_:)), keyEquivalent: shortcut.keyEquivalent)
         show.keyEquivalentModifierMask = shortcut.modifiers; show.target = self; menu.addItem(show)

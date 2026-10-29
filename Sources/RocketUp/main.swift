@@ -234,7 +234,7 @@ final class Controller: NSObject, NSApplicationDelegate, NSWindowDelegate, NSTex
         let searchIcon = NSImageView(frame: NSRect(x: 19, y: 20, width: 30, height: 30)); searchIcon.image = NSImage(systemSymbolName: "magnifyingglass", accessibilityDescription: "Search")?.withSymbolConfiguration(NSImage.SymbolConfiguration(pointSize: 24, weight: .regular)); searchIcon.contentTintColor = NSColor.white.withAlphaComponent(0.7); searchIcon.autoresizingMask = [.minYMargin]; content.addSubview(searchIcon)
         field.frame = NSRect(x: 56, y: 13, width: width - 76, height: 36); field.autoresizingMask = [.minYMargin, .width]; field.font = .systemFont(ofSize: 24); field.placeholderString = "RocketUp Search"; field.isBordered = false; field.drawsBackground = false; field.focusRingType = .none; field.delegate = self
         field.command = { [weak self] selector in self?.command(selector) ?? false }; content.addSubview(field)
-        list.frame = NSRect(x: 10, y: 8, width: width - 20, height: 0); list.autoresizingMask = [.width, .minYMargin]; content.addSubview(list)
+        list.frame = NSRect(x: 10, y: 10, width: width - 20, height: 0); list.autoresizingMask = [.width, .minYMargin]; content.addSubview(list)
     }
     func toggle() { if panel.isVisible && !hiding { hide() } else { show() } }
     func show() {
@@ -270,7 +270,7 @@ final class Controller: NSObject, NSApplicationDelegate, NSWindowDelegate, NSTex
             panel.animator().setFrame(frame, display: true)
         }
         let listHeight = CGFloat(matches.count) * row
-        list.frame = NSRect(x: 10, y: panel.contentView!.bounds.height - header - listHeight + 8, width: width - 20, height: listHeight)
+        list.frame = NSRect(x: 10, y: panel.contentView!.bounds.height - header - listHeight + 10, width: width - 20, height: listHeight)
         for (i, app) in matches.enumerated() {
             let item = NSButton(frame: NSRect(x: 0, y: CGFloat(matches.count - i - 1) * row, width: width - 20, height: row))
             item.isBordered = false; item.title = ""; item.target = self; item.action = #selector(clicked(_:)); item.tag = i; item.wantsLayer = true; item.layer?.cornerRadius = 12; item.layer?.backgroundColor = (i == selection ? NSColor.white.withAlphaComponent(0.18) : .clear).cgColor

@@ -49,6 +49,9 @@ precondition(wait { missingIndex.entries.contains { $0.name == "Later" } }, "Cre
 let installed = Index()
 precondition(wait { !installed.entries.isEmpty }, "No installed apps discovered in the sandbox")
 precondition(installed.entries.contains { $0.name == "Safari" }, "Safari not discovered in the sandbox")
+if let expected = ProcessInfo.processInfo.environment["ROCKETUP_EXPECT_USER_APP"] {
+    precondition(installed.entries.contains { $0.name == expected && $0.local }, "User Applications app not discovered without a bookmark")
+}
 if ProcessInfo.processInfo.environment["ROCKETUP_CHECK_KICAD"] != nil {
     precondition(installed.entries.contains { $0.url.path == "/Applications/KiCad/KiCad.app" }, "Installed KiCad was not discovered")
 }

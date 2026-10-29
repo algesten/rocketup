@@ -166,7 +166,6 @@ final class Panel: NSPanel {
 }
 final class Controller: NSObject, NSApplicationDelegate, NSWindowDelegate, NSTextFieldDelegate {
     var index: Index!
-    var userAppsAccess: URL?
     var panel: Panel!
     let field = SearchField(frame: .zero)
     let list = NSView()
@@ -181,10 +180,6 @@ final class Controller: NSObject, NSApplicationDelegate, NSWindowDelegate, NSTex
     let width: CGFloat = 640, header: CGFloat = 70, row: CGFloat = 54
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
-        if let data = UserDefaults.standard.data(forKey: "userApplicationsBookmark") {
-            var stale = false
-            if let url = try? URL(resolvingBookmarkData: data, options: [.withSecurityScope], relativeTo: nil, bookmarkDataIsStale: &stale), url.startAccessingSecurityScopedResource() { userAppsAccess = url }
-        }
         startIndex()
         createPanel()
         var spec = EventTypeSpec(eventClass: OSType(kEventClassKeyboard), eventKind: UInt32(kEventHotKeyPressed))
@@ -200,25 +195,8 @@ final class Controller: NSObject, NSApplicationDelegate, NSWindowDelegate, NSTex
         monitor = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown, .otherMouseDown]) { [weak self] _ in DispatchQueue.main.async { self?.hide() } }
     }
     func startIndex() {
-        let roots = ["/Applications", "/System/Applications"] + (userAppsAccess == nil ? [] : [userHome + "/Applications"])
-        index = Index(roots: roots)
+        index = Index()
         index.changed = { [weak self] in self?.refresh() }
-    }
-    func chooseUserApplications() {
-        let dialog = NSOpenPanel(); dialog.canChooseFiles = false; dialog.canChooseDirectories = true; dialog.allowsMultipleSelection = false
-        dialog.directoryURL = URL(fileURLWithPath: userHome); dialog.message = "Choose your Applications folder to include its apps in Rocket Up."
-        dialog.begin { [weak self] response in
-            guard let self, response == .OK, let url = dialog.url else { return }
-            guard url.standardizedFileURL.resolvingSymlinksInPath().path == URL(fileURLWithPath: userHome + "/Applications").standardizedFileURL.resolvingSymlinksInPath().path else {
-                let alert = NSAlert(); alert.messageText = "Choose your Applications folder"; alert.informativeText = "Select the Applications folder in your home folder."; alert.runModal(); return
-            }
-            do {
-                let data = try url.bookmarkData(options: [.withSecurityScope], includingResourceValuesForKeys: nil, relativeTo: nil)
-                guard url.startAccessingSecurityScopedResource() else { return }
-                self.userAppsAccess?.stopAccessingSecurityScopedResource(); self.userAppsAccess = url
-                UserDefaults.standard.set(data, forKey: "userApplicationsBookmark"); self.startIndex()
-            } catch { NSAlert(error: error).runModal() }
-        }
     }
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool { if !flag { show() }; return false }
     @discardableResult func register(_ shortcut: Shortcut) -> Bool {
@@ -317,10 +295,10 @@ final class ShortcutRecorder: NSButton {
 }
 final class SettingsWindow: NSWindow {
     init(controller: Controller) {
-        super.init(contentRect: NSRect(x: 0, y: 0, width: 400, height: 210), styleMask: [.titled, .closable], backing: .buffered, defer: false)
+        super.init(contentRect: NSRect(x: 0, y: 0, width: 400, height: 165), styleMask: [.titled, .closable], backing: .buffered, defer: false)
         title = "Rocket Up Settings"; isReleasedWhenClosed = false
-        let label = NSTextField(labelWithString: "Keyboard shortcut"); label.frame = NSRect(x: 24, y: 153, width: 180, height: 22); contentView?.addSubview(label)
-        let recorder = ShortcutRecorder(frame: NSRect(x: 220, y: 148, width: 150, height: 30)); recorder.title = controller.shortcut.displayString; recorder.bezelStyle = .rounded; contentView?.addSubview(recorder)
+        let label = NSTextField(labelWithString: "Keyboard shortcut"); label.frame = NSRect(x: 24, y: 108, width: 180, height: 22); contentView?.addSubview(label)
+        let recorder = ShortcutRecorder(frame: NSRect(x: 220, y: 103, width: 150, height: 30)); recorder.title = controller.shortcut.displayString; recorder.bezelStyle = .rounded; contentView?.addSubview(recorder)
         recorder.onBegin = { [weak controller] in if let key = controller?.hotKey { UnregisterEventHotKey(key); controller?.hotKey = nil } }
         recorder.onEnd = { [weak controller, weak recorder] in
             guard let controller else { return }
@@ -333,12 +311,8 @@ final class SettingsWindow: NSWindow {
             guard let candidate = Shortcut(keyCode: event.keyCode, modifiers: event.modifierFlags) else { NSSound.beep(); return }
             if controller.register(candidate) { recorder.window?.makeFirstResponder(nil) } else { NSSound.beep(); recorder.title = "Unavailable" }
         }
-        let login = NSButton(checkboxWithTitle: "Launch at login", target: nil, action: nil); login.frame = NSRect(x: 24, y: 98, width: 250, height: 24); login.state = SMAppService.mainApp.status == .enabled ? .on : .off; login.target = self; login.action = #selector(toggleLogin(_:)); contentView?.addSubview(login)
-        let access = NSButton(title: "Include User Applications…", target: self, action: #selector(chooseApps)); access.frame = NSRect(x: 24, y: 42, width: 235, height: 30); contentView?.addSubview(access)
-        self.controller = controller
+        let login = NSButton(checkboxWithTitle: "Launch at login", target: nil, action: nil); login.frame = NSRect(x: 24, y: 53, width: 250, height: 24); login.state = SMAppService.mainApp.status == .enabled ? .on : .off; login.target = self; login.action = #selector(toggleLogin(_:)); contentView?.addSubview(login)
     }
-    weak var controller: Controller?
-    @objc func chooseApps() { controller?.chooseUserApplications() }
     @objc func toggleLogin(_ sender: NSButton) { do { if sender.state == .on { try SMAppService.mainApp.register() } else { try SMAppService.mainApp.unregister() } } catch { sender.state = SMAppService.mainApp.status == .enabled ? .on : .off; NSAlert(error: error).runModal() } }
 }
 func makeMainMenu(controller: Controller) -> NSMenu {

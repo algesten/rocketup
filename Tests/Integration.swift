@@ -35,6 +35,13 @@ try fixture(root, "Notes")
 precondition(wait { index.entries.count == 2 }, "New app not observed")
 try FileManager.default.removeItem(at: root.appendingPathComponent("Notes.app"))
 precondition(wait { index.entries.count == 1 }, "Removed app not observed")
+let nestedRoot = root.appendingPathComponent("NestedTest")
+try FileManager.default.createDirectory(at: nestedRoot, withIntermediateDirectories: true)
+try fixture(nestedRoot, "First")
+try FileManager.default.createSymbolicLink(at: nestedRoot.appendingPathComponent("Alias.app"), withDestinationURL: nestedRoot.appendingPathComponent("First.app"))
+try fixture(nestedRoot.appendingPathComponent("Suite"), "Nested")
+let nestedIndex = Index(roots: [nestedRoot.path])
+precondition(wait { nestedIndex.entries.contains { $0.name == "Nested" } }, "An app nested in a regular folder was skipped")
 let missingRoot = root.appendingPathComponent("Applications")
 let missingIndex = Index(roots: [missingRoot.path])
 try fixture(missingRoot, "Later")
@@ -42,6 +49,9 @@ precondition(wait { missingIndex.entries.contains { $0.name == "Later" } }, "Cre
 let installed = Index()
 precondition(wait { !installed.entries.isEmpty }, "No installed apps discovered in the sandbox")
 precondition(installed.entries.contains { $0.name == "Safari" }, "Safari not discovered in the sandbox")
+if ProcessInfo.processInfo.environment["ROCKETUP_CHECK_KICAD"] != nil {
+    precondition(installed.entries.contains { $0.url.path == "/Applications/KiCad/KiCad.app" }, "Installed KiCad was not discovered")
+}
 if ProcessInfo.processInfo.environment["ROCKETUP_CHECK_LAUNCH"] != nil,
    let calculator = installed.entries.first(where: { $0.url.lastPathComponent == "Calculator.app" }) {
     let wasRunning = NSRunningApplication.runningApplications(withBundleIdentifier: "com.apple.calculator").contains { !$0.isTerminated }

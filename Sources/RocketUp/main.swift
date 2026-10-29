@@ -104,14 +104,19 @@ final class Index {
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
             var found: [AppEntry] = []
             for root in roots {
-                guard let enumerator = FileManager.default.enumerator(at: URL(fileURLWithPath: root), includingPropertiesForKeys: [.isDirectoryKey], options: []) else { continue }
-                for case let url as URL in enumerator {
-                    guard url.pathExtension.lowercased() == "app" else { continue }
-                    enumerator.skipDescendants()
-                    guard let bundle = Bundle(url: url), bundle.object(forInfoDictionaryKey: "CFBundlePackageType") as? String == "APPL", let executable = bundle.executableURL, FileManager.default.fileExists(atPath: executable.path) else { continue }
-                    let display = FileManager.default.displayName(atPath: url.path).replacingOccurrences(of: ".app", with: "", options: [.anchored, .backwards, .caseInsensitive])
-                    let names = [display, bundle.localizedInfoDictionary?["CFBundleDisplayName"] as? String, bundle.localizedInfoDictionary?["CFBundleName"] as? String, bundle.infoDictionary?["CFBundleDisplayName"] as? String, bundle.infoDictionary?["CFBundleName"] as? String, url.deletingPathExtension().lastPathComponent].compactMap { $0 }.filter { !$0.isEmpty }
-                    found.append(AppEntry(url: url, name: display, names: names, local: root == userHome + "/Applications", icon: NSWorkspace.shared.icon(forFile: url.path)))
+                var directories = [URL(fileURLWithPath: root)]
+                while let directory = directories.popLast() {
+                    guard let children = try? FileManager.default.contentsOfDirectory(at: directory, includingPropertiesForKeys: [.isDirectoryKey, .isSymbolicLinkKey]) else { continue }
+                    for url in children {
+                        if url.pathExtension.lowercased() != "app" {
+                            if let values = try? url.resourceValues(forKeys: [.isDirectoryKey, .isSymbolicLinkKey]), values.isDirectory == true, values.isSymbolicLink != true { directories.append(url) }
+                            continue
+                        }
+                        guard let bundle = Bundle(url: url), bundle.object(forInfoDictionaryKey: "CFBundlePackageType") as? String == "APPL", let executable = bundle.executableURL, FileManager.default.fileExists(atPath: executable.path) else { continue }
+                        let display = FileManager.default.displayName(atPath: url.path).replacingOccurrences(of: ".app", with: "", options: [.anchored, .backwards, .caseInsensitive])
+                        let names = [display, bundle.localizedInfoDictionary?["CFBundleDisplayName"] as? String, bundle.localizedInfoDictionary?["CFBundleName"] as? String, bundle.infoDictionary?["CFBundleDisplayName"] as? String, bundle.infoDictionary?["CFBundleName"] as? String, url.deletingPathExtension().lastPathComponent].compactMap { $0 }.filter { !$0.isEmpty }
+                        found.append(AppEntry(url: url, name: display, names: names, local: root == userHome + "/Applications", icon: NSWorkspace.shared.icon(forFile: url.path)))
+                    }
                 }
             }
             let counts = Dictionary(grouping: found, by: { normalized($0.name) }).mapValues(\.count)

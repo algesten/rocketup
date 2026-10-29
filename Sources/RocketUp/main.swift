@@ -280,7 +280,7 @@ final class Controller: NSObject, NSApplicationDelegate, NSWindowDelegate, NSTex
                 mask.path = resultHighlightPath(in: item.bounds, bottomRadius: launcherCornerRadius - 10).copy(using: &flip)
                 item.layer?.mask = mask
             }
-            let icon = NSImageView(frame: NSRect(x: 7, y: 4.25, width: 45.5, height: 45.5)); icon.imageScaling = .scaleProportionallyUpOrDown; icon.image = app.icon; item.addSubview(icon)
+            let icon = NSImageView(frame: NSRect(x: 7, y: 4, width: 46, height: 46)); icon.imageScaling = .scaleProportionallyUpOrDown; icon.image = app.icon; item.addSubview(icon)
             let label = NSTextField(labelWithString: app.name); label.font = .systemFont(ofSize: 18, weight: .medium); label.textColor = .white; label.frame = NSRect(x: 64, y: app.duplicate ? 25 : 16, width: width - 120, height: 24); item.addSubview(label)
             if app.duplicate { let path = NSTextField(labelWithString: app.url.deletingLastPathComponent().path); path.font = .systemFont(ofSize: 11); path.textColor = NSColor.white.withAlphaComponent(0.65); path.frame = NSRect(x: 64, y: 7, width: width - 120, height: 16); item.addSubview(path) }
             list.addSubview(item)

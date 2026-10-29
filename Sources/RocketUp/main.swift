@@ -123,6 +123,23 @@ final class Index {
 
 private let launcherCornerRadius: CGFloat = 35
 
+func resultHighlightPath(in bounds: CGRect, bottomRadius: CGFloat) -> CGPath {
+    let topRadius: CGFloat = 12
+    let x = bounds.minX, y = bounds.minY, right = bounds.maxX, top = bounds.maxY
+    let path = CGMutablePath()
+    path.move(to: CGPoint(x: x, y: y + bottomRadius))
+    path.addLine(to: CGPoint(x: x, y: top - topRadius))
+    path.addArc(tangent1End: CGPoint(x: x, y: top), tangent2End: CGPoint(x: x + topRadius, y: top), radius: topRadius)
+    path.addLine(to: CGPoint(x: right - topRadius, y: top))
+    path.addArc(tangent1End: CGPoint(x: right, y: top), tangent2End: CGPoint(x: right, y: top - topRadius), radius: topRadius)
+    path.addLine(to: CGPoint(x: right, y: y + bottomRadius))
+    path.addArc(tangent1End: CGPoint(x: right, y: y), tangent2End: CGPoint(x: right - bottomRadius, y: y), radius: bottomRadius)
+    path.addLine(to: CGPoint(x: x + bottomRadius, y: y))
+    path.addArc(tangent1End: CGPoint(x: x, y: y), tangent2End: CGPoint(x: x, y: y + bottomRadius), radius: bottomRadius)
+    path.closeSubpath()
+    return path
+}
+
 final class Highlights: NSView {
     override func draw(_ dirtyRect: NSRect) {
         let path = NSBezierPath(roundedRect: bounds.insetBy(dx: 0.5, dy: 0.5), xRadius: launcherCornerRadius - 0.5, yRadius: launcherCornerRadius - 0.5)
@@ -254,6 +271,9 @@ final class Controller: NSObject, NSApplicationDelegate, NSWindowDelegate, NSTex
         for (i, app) in matches.enumerated() {
             let item = NSButton(frame: NSRect(x: 0, y: CGFloat(matches.count - i - 1) * row, width: width - 20, height: row))
             item.isBordered = false; item.title = ""; item.target = self; item.action = #selector(clicked(_:)); item.tag = i; item.wantsLayer = true; item.layer?.cornerRadius = 12; item.layer?.backgroundColor = (i == selection ? NSColor.white.withAlphaComponent(0.18) : .clear).cgColor
+            if i == matches.count - 1 {
+                let mask = CAShapeLayer(); mask.path = resultHighlightPath(in: item.bounds, bottomRadius: launcherCornerRadius - 10); item.layer?.mask = mask
+            }
             let icon = NSImageView(frame: NSRect(x: 12, y: 7, width: 40, height: 40)); icon.image = app.icon; item.addSubview(icon)
             let label = NSTextField(labelWithString: app.name); label.font = .systemFont(ofSize: 18, weight: .medium); label.textColor = .white; label.frame = NSRect(x: 64, y: app.duplicate ? 25 : 16, width: width - 120, height: 24); item.addSubview(label)
             if app.duplicate { let path = NSTextField(labelWithString: app.url.deletingLastPathComponent().path); path.font = .systemFont(ofSize: 11); path.textColor = NSColor.white.withAlphaComponent(0.65); path.frame = NSRect(x: 64, y: 7, width: width - 120, height: 16); item.addSubview(path) }

@@ -144,7 +144,10 @@ final class Highlights: NSView {
     override func draw(_ dirtyRect: NSRect) {
         let path = NSBezierPath(roundedRect: bounds.insetBy(dx: 0.5, dy: 0.5), xRadius: launcherCornerRadius - 0.5, yRadius: launcherCornerRadius - 0.5)
         NSColor.white.withAlphaComponent(0.17).setStroke(); path.lineWidth = 1; path.stroke()
+        NSGraphicsContext.saveGraphicsState()
+        path.addClip()
         NSGradient(starting: NSColor.white.withAlphaComponent(0.14), ending: .clear)?.draw(in: NSRect(x: 12, y: bounds.height - 3, width: bounds.width - 24, height: 3), angle: 90)
+        NSGraphicsContext.restoreGraphicsState()
     }
     override func hitTest(_ point: NSPoint) -> NSView? { nil }
 }

@@ -121,9 +121,11 @@ final class Index {
     }
 }
 
+private let launcherCornerRadius: CGFloat = 35
+
 final class Highlights: NSView {
     override func draw(_ dirtyRect: NSRect) {
-        let path = NSBezierPath(roundedRect: bounds.insetBy(dx: 0.5, dy: 0.5), xRadius: 20, yRadius: 20)
+        let path = NSBezierPath(roundedRect: bounds.insetBy(dx: 0.5, dy: 0.5), xRadius: launcherCornerRadius - 0.5, yRadius: launcherCornerRadius - 0.5)
         NSColor.white.withAlphaComponent(0.17).setStroke(); path.lineWidth = 1; path.stroke()
         NSGradient(starting: NSColor.white.withAlphaComponent(0.14), ending: .clear)?.draw(in: NSRect(x: 12, y: bounds.height - 3, width: bounds.width - 24, height: 3), angle: 90)
     }
@@ -205,7 +207,7 @@ final class Controller: NSObject, NSApplicationDelegate, NSWindowDelegate, NSTex
         panel = Panel(contentRect: NSRect(x: 0, y: 0, width: width, height: header), styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
         panel.isOpaque = false; panel.backgroundColor = .clear; panel.hasShadow = true; panel.level = .floating
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]; panel.delegate = self; panel.isReleasedWhenClosed = false
-        let glass = NSGlassEffectView(frame: panel.contentView!.bounds); glass.autoresizingMask = [.width, .height]; glass.appearance = NSAppearance(named: .darkAqua); glass.style = .clear; glass.cornerRadius = 20
+        let glass = NSGlassEffectView(frame: panel.contentView!.bounds); glass.autoresizingMask = [.width, .height]; glass.appearance = NSAppearance(named: .darkAqua); glass.style = .clear; glass.cornerRadius = launcherCornerRadius
         let content = NSView(frame: glass.bounds); content.autoresizingMask = [.width, .height]; glass.contentView = content
         panel.contentView!.addSubview(glass)
         let highlights = Highlights(frame: panel.contentView!.bounds); highlights.autoresizingMask = [.width, .height]; panel.contentView!.addSubview(highlights)

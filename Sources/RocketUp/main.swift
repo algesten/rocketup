@@ -1,0 +1,308 @@
+import AppKit
+import Carbon
+import CoreServices
+import ServiceManagement
+import Darwin
+
+let userHome = getpwuid(getuid()).map { String(cString: $0.pointee.pw_dir) } ?? NSHomeDirectory()
+
+struct AppEntry {
+    let url: URL
+    let name: String
+    let names: [String]
+    let local: Bool
+    let icon: NSImage
+    let searchNames: [SearchName]
+    var duplicate = false
+    init(url: URL, name: String, names: [String], local: Bool, icon: NSImage) {
+        self.url = url; self.name = name; self.names = names; self.local = local; self.icon = icon
+        self.searchNames = names.map(SearchName.init)
+    }
+}
+
+struct SearchName {
+    let name: String
+    let words: [String]
+    let initials: String
+    let compact: String
+    init(_ value: String) {
+        name = normalized(value)
+        words = value.components(separatedBy: CharacterSet.alphanumerics.inverted).filter { !$0.isEmpty }.map(normalized)
+        initials = words.map { String($0.prefix(1)) }.joined()
+        compact = words.joined()
+    }
+}
+
+func normalized(_ s: String) -> String {
+    s.folding(options: [.caseInsensitive, .diacriticInsensitive], locale: .current).lowercased()
+}
+func words(_ s: String) -> [String] {
+    normalized(s).components(separatedBy: CharacterSet.alphanumerics.inverted).filter { !$0.isEmpty }
+}
+func score(_ entry: AppEntry, _ query: String) -> Int? {
+    let q = normalized(query).trimmingCharacters(in: .whitespacesAndNewlines)
+    guard !q.isEmpty else { return nil }
+    var best: Int?
+    for name in entry.searchNames {
+        let n = name.name, w = name.words
+        let value: Int?
+        if n == q { value = 0 }
+        else if n.hasPrefix(q) { value = 1 }
+        else if w.contains(where: { $0.hasPrefix(q) }) { value = 2 }
+        else if name.initials.hasPrefix(q) { value = 3 }
+        else { value = nil }
+        if let value { best = min(best ?? value, value) }
+    }
+    return best
+}
+func results(_ entries: [AppEntry], _ query: String) -> [AppEntry] {
+    let q = normalized(query).trimmingCharacters(in: .whitespacesAndNewlines)
+    guard !q.isEmpty else { return [] }
+    var matches = entries.compactMap { e -> (AppEntry, Int)? in score(e, q).map { (e, $0) } }
+    if matches.isEmpty {
+        let compact = words(q).joined()
+        if !compact.isEmpty { matches = entries.compactMap { e in e.searchNames.contains(where: { $0.compact.contains(compact) }) ? (e, 4) : nil } }
+    }
+    return Array(matches.sorted { a, b in
+        if a.1 != b.1 { return a.1 < b.1 }
+        let order = a.0.name.localizedStandardCompare(b.0.name)
+        if order != .orderedSame { return order == .orderedAscending }
+        if a.0.local != b.0.local { return a.0.local }
+        return a.0.url.path < b.0.url.path
+    }.prefix(5).map(\.0))
+}
+
+final class Index {
+    private(set) var entries: [AppEntry] = []
+    private let roots: [String]
+    private var stream: FSEventStreamRef?
+    private var generation = 0
+    var changed: (() -> Void)?
+    init(roots: [String] = ["/Applications", userHome + "/Applications", "/System/Applications"]) {
+        self.roots = roots.map { URL(fileURLWithPath: $0).standardizedFileURL.resolvingSymlinksInPath().path }
+        var context = FSEventStreamContext(version: 0, info: Unmanaged.passUnretained(self).toOpaque(), retain: nil, release: nil, copyDescription: nil)
+        let watchPaths = Set(self.roots.map { root -> String in
+            var path = root
+            while !FileManager.default.fileExists(atPath: path) && path != "/" { path = (path as NSString).deletingLastPathComponent }
+            return path
+        })
+        let paths = Array(watchPaths) as CFArray
+        stream = FSEventStreamCreate(nil, { _, info, _, eventPaths, _, _ in
+            guard let info else { return }
+            let index = Unmanaged<Index>.fromOpaque(info).takeUnretainedValue()
+            let paths = unsafeBitCast(eventPaths, to: NSArray.self) as? [String] ?? []
+            if paths.contains(where: { path in index.roots.contains { path == $0 || path.hasPrefix($0 + "/") || $0.hasPrefix(path + "/") } }) { index.rebuild() }
+        }, &context, paths, FSEventStreamEventId(kFSEventStreamEventIdSinceNow), 0.1, FSEventStreamCreateFlags(kFSEventStreamCreateFlagUseCFTypes | kFSEventStreamCreateFlagWatchRoot | kFSEventStreamCreateFlagFileEvents))
+        if let stream { FSEventStreamSetDispatchQueue(stream, DispatchQueue.main); FSEventStreamStart(stream) }
+        rebuild()
+    }
+    deinit { if let stream { FSEventStreamStop(stream); FSEventStreamInvalidate(stream); FSEventStreamRelease(stream) } }
+    func rebuild() {
+        generation += 1
+        let revision = generation, roots = self.roots
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            var found: [AppEntry] = []
+            for root in roots {
+                guard let enumerator = FileManager.default.enumerator(at: URL(fileURLWithPath: root), includingPropertiesForKeys: [.isDirectoryKey], options: []) else { continue }
+                for case let url as URL in enumerator {
+                    guard url.pathExtension.lowercased() == "app" else { continue }
+                    enumerator.skipDescendants()
+                    guard let bundle = Bundle(url: url), bundle.object(forInfoDictionaryKey: "CFBundlePackageType") as? String == "APPL", let executable = bundle.executableURL, FileManager.default.fileExists(atPath: executable.path) else { continue }
+                    let display = FileManager.default.displayName(atPath: url.path).replacingOccurrences(of: ".app", with: "", options: [.anchored, .backwards, .caseInsensitive])
+                    let names = [display, bundle.localizedInfoDictionary?["CFBundleDisplayName"] as? String, bundle.localizedInfoDictionary?["CFBundleName"] as? String, bundle.infoDictionary?["CFBundleDisplayName"] as? String, bundle.infoDictionary?["CFBundleName"] as? String, url.deletingPathExtension().lastPathComponent].compactMap { $0 }.filter { !$0.isEmpty }
+                    found.append(AppEntry(url: url, name: display, names: names, local: root == userHome + "/Applications", icon: NSWorkspace.shared.icon(forFile: url.path)))
+                }
+            }
+            let counts = Dictionary(grouping: found, by: { normalized($0.name) }).mapValues(\.count)
+            for i in found.indices { found[i].duplicate = (counts[normalized(found[i].name)] ?? 0) > 1 }
+            DispatchQueue.main.async { guard let self, revision == self.generation else { return }; self.entries = found; self.changed?() }
+        }
+    }
+}
+
+final class Highlights: NSView {
+    override func draw(_ dirtyRect: NSRect) {
+        let path = NSBezierPath(roundedRect: bounds.insetBy(dx: 0.5, dy: 0.5), xRadius: 20, yRadius: 20)
+        NSColor.white.withAlphaComponent(0.17).setStroke(); path.lineWidth = 1; path.stroke()
+        NSGradient(starting: NSColor.white.withAlphaComponent(0.14), ending: .clear)?.draw(in: NSRect(x: 12, y: bounds.height - 3, width: bounds.width - 24, height: 3), angle: 90)
+    }
+    override func hitTest(_ point: NSPoint) -> NSView? { nil }
+}
+final class SearchField: NSTextField {
+    var command: ((Selector) -> Bool)?
+    override func doCommand(by selector: Selector) { if command?(selector) != true { super.doCommand(by: selector) } }
+}
+final class Panel: NSPanel {
+    override var canBecomeKey: Bool { true }
+    override var canBecomeMain: Bool { true }
+}
+final class Controller: NSObject, NSApplicationDelegate, NSWindowDelegate, NSTextFieldDelegate {
+    var index: Index!
+    var userAppsAccess: URL?
+    var panel: Panel!
+    let field = SearchField(frame: .zero)
+    let list = NSView()
+    var matches: [AppEntry] = []
+    var selection = 0
+    var hotKey: EventHotKeyRef?
+    var handler: EventHandlerRef?
+    var settings: NSWindow?
+    var shortcut = Shortcut.load(from: .standard)
+    var monitor: Any?
+    var hiding = false
+    let width: CGFloat = 640, header: CGFloat = 70, row: CGFloat = 54
+    func applicationDidFinishLaunching(_ notification: Notification) {
+        NSApp.setActivationPolicy(.accessory)
+        if let data = UserDefaults.standard.data(forKey: "userApplicationsBookmark") {
+            var stale = false
+            if let url = try? URL(resolvingBookmarkData: data, options: [.withSecurityScope], relativeTo: nil, bookmarkDataIsStale: &stale), url.startAccessingSecurityScopedResource() { userAppsAccess = url }
+        }
+        startIndex()
+        createPanel()
+        var spec = EventTypeSpec(eventClass: OSType(kEventClassKeyboard), eventKind: UInt32(kEventHotKeyPressed))
+        InstallEventHandler(GetApplicationEventTarget(), { _, _, user in
+            guard let user else { return noErr }
+            DispatchQueue.main.async { Unmanaged<Controller>.fromOpaque(user).takeUnretainedValue().toggle() }
+            return noErr
+        }, 1, &spec, Unmanaged.passUnretained(self).toOpaque(), &handler)
+        if !register(shortcut) {
+            let alert = NSAlert(); alert.messageText = "Shortcut unavailable"; alert.informativeText = "The saved shortcut is in use. Choose another in Rocket Up settings."; alert.runModal()
+            openSettings()
+        }
+        monitor = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown, .otherMouseDown]) { [weak self] _ in DispatchQueue.main.async { self?.hide() } }
+    }
+    func startIndex() {
+        let roots = ["/Applications", "/System/Applications"] + (userAppsAccess == nil ? [] : [userHome + "/Applications"])
+        index = Index(roots: roots)
+        index.changed = { [weak self] in self?.refresh() }
+    }
+    func chooseUserApplications() {
+        let dialog = NSOpenPanel(); dialog.canChooseFiles = false; dialog.canChooseDirectories = true; dialog.allowsMultipleSelection = false
+        dialog.directoryURL = URL(fileURLWithPath: userHome); dialog.message = "Choose your Applications folder to include its apps in Rocket Up."
+        dialog.begin { [weak self] response in
+            guard let self, response == .OK, let url = dialog.url else { return }
+            guard url.standardizedFileURL.resolvingSymlinksInPath().path == URL(fileURLWithPath: userHome + "/Applications").standardizedFileURL.resolvingSymlinksInPath().path else {
+                let alert = NSAlert(); alert.messageText = "Choose your Applications folder"; alert.informativeText = "Select the Applications folder in your home folder."; alert.runModal(); return
+            }
+            do {
+                let data = try url.bookmarkData(options: [.withSecurityScope], includingResourceValuesForKeys: nil, relativeTo: nil)
+                guard url.startAccessingSecurityScopedResource() else { return }
+                self.userAppsAccess?.stopAccessingSecurityScopedResource(); self.userAppsAccess = url
+                UserDefaults.standard.set(data, forKey: "userApplicationsBookmark"); self.startIndex()
+            } catch { NSAlert(error: error).runModal() }
+        }
+    }
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool { if !flag { show() }; return false }
+    @discardableResult func register(_ shortcut: Shortcut) -> Bool {
+        var newKey: EventHotKeyRef?
+        let status = RegisterEventHotKey(UInt32(shortcut.keyCode), shortcut.carbonModifiers, EventHotKeyID(signature: 0x524f434b, id: 1), GetApplicationEventTarget(), 0, &newKey)
+        guard status == noErr else { return false }
+        if let hotKey { UnregisterEventHotKey(hotKey) }
+        hotKey = newKey; self.shortcut = shortcut; shortcut.save(to: .standard); return true
+    }
+    func createPanel() {
+        panel = Panel(contentRect: NSRect(x: 0, y: 0, width: width, height: header), styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
+        panel.isOpaque = false; panel.backgroundColor = .clear; panel.hasShadow = true; panel.level = .floating
+        panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]; panel.delegate = self; panel.isReleasedWhenClosed = false
+        let glass = NSGlassEffectView(frame: panel.contentView!.bounds); glass.autoresizingMask = [.width, .height]; glass.appearance = NSAppearance(named: .darkAqua); glass.style = .clear; glass.cornerRadius = 20
+        let content = NSView(frame: glass.bounds); content.autoresizingMask = [.width, .height]; glass.contentView = content
+        panel.contentView!.addSubview(glass)
+        let highlights = Highlights(frame: panel.contentView!.bounds); highlights.autoresizingMask = [.width, .height]; panel.contentView!.addSubview(highlights)
+        let searchIcon = NSImageView(frame: NSRect(x: 22, y: 24, width: 22, height: 22)); searchIcon.image = NSImage(systemSymbolName: "magnifyingglass", accessibilityDescription: "Search"); searchIcon.contentTintColor = NSColor.white.withAlphaComponent(0.7); searchIcon.autoresizingMask = [.minYMargin]; content.addSubview(searchIcon)
+        field.frame = NSRect(x: 56, y: 17, width: width - 76, height: 36); field.autoresizingMask = [.minYMargin, .width]; field.font = .systemFont(ofSize: 24); field.placeholderString = "RocketUp Search"; field.isBordered = false; field.drawsBackground = false; field.focusRingType = .none; field.delegate = self
+        field.command = { [weak self] selector in self?.command(selector) ?? false }; content.addSubview(field)
+        list.frame = NSRect(x: 10, y: 8, width: width - 20, height: 0); list.autoresizingMask = [.width]; content.addSubview(list)
+    }
+    func toggle() { if panel.isVisible && !hiding { hide() } else { show() } }
+    func show() {
+        hiding = false
+        let screen = NSScreen.main ?? NSScreen.screens.first!
+        let frame = screen.visibleFrame
+        panel.setFrameOrigin(NSPoint(x: frame.midX - width / 2, y: frame.maxY - frame.height * 0.22 - panel.frame.height))
+        panel.alphaValue = 0; panel.makeKeyAndOrderFront(nil); NSApp.activate(ignoringOtherApps: true); panel.makeFirstResponder(field); field.currentEditor()?.selectAll(nil)
+        NSAnimationContext.runAnimationGroup { c in c.duration = 0.05; panel.animator().alphaValue = 1 }
+    }
+    func hide() {
+        guard panel.isVisible, !hiding else { return }
+        hiding = true
+        NSAnimationContext.runAnimationGroup({ c in c.duration = 0.05; panel.animator().alphaValue = 0 }, completionHandler: { [weak self] in guard let self, self.hiding else { return }; self.panel.orderOut(nil); self.hiding = false })
+    }
+    func windowDidResignKey(_ notification: Notification) { if notification.object as? NSWindow === panel { hide() } }
+    func controlTextDidChange(_ obj: Notification) { selection = 0; refresh() }
+    func control(_ control: NSControl, textView: NSTextView, doCommandBy commandSelector: Selector) -> Bool {
+        command(commandSelector)
+    }
+    func refresh() {
+        matches = results(index.entries, field.stringValue); selection = min(selection, max(0, matches.count - 1)); render()
+    }
+    func render() {
+        list.subviews.forEach { $0.removeFromSuperview() }
+        let height = header + CGFloat(matches.count) * row
+        var frame = panel.frame; frame.origin.y += frame.height - height; frame.size.height = height
+        // A short animation completes within the 50 ms interaction budget.
+        NSAnimationContext.runAnimationGroup { c in c.duration = 0.035; panel.animator().setFrame(frame, display: true) }
+        list.frame = NSRect(x: 10, y: 8, width: width - 20, height: CGFloat(matches.count) * row)
+        for (i, app) in matches.enumerated() {
+            let item = NSButton(frame: NSRect(x: 0, y: CGFloat(matches.count - i - 1) * row, width: width - 20, height: row))
+            item.isBordered = false; item.title = ""; item.target = self; item.action = #selector(clicked(_:)); item.tag = i; item.wantsLayer = true; item.layer?.cornerRadius = 12; item.layer?.backgroundColor = (i == selection ? NSColor.white.withAlphaComponent(0.18) : .clear).cgColor
+            let icon = NSImageView(frame: NSRect(x: 12, y: 7, width: 40, height: 40)); icon.image = app.icon; item.addSubview(icon)
+            let label = NSTextField(labelWithString: app.name); label.font = .systemFont(ofSize: 18, weight: .medium); label.textColor = .white; label.frame = NSRect(x: 64, y: app.duplicate ? 25 : 16, width: width - 120, height: 24); item.addSubview(label)
+            if app.duplicate { let path = NSTextField(labelWithString: app.url.deletingLastPathComponent().path); path.font = .systemFont(ofSize: 11); path.textColor = NSColor.white.withAlphaComponent(0.65); path.frame = NSRect(x: 64, y: 7, width: width - 120, height: 16); item.addSubview(path) }
+            list.addSubview(item)
+        }
+    }
+    func command(_ selector: Selector) -> Bool {
+        switch selector {
+        case #selector(NSResponder.cancelOperation(_:)):
+            if field.stringValue.isEmpty { hide() } else { field.stringValue = ""; selection = 0; refresh() }; return true
+        case #selector(NSResponder.moveDown(_:)): if !matches.isEmpty { selection = (selection + 1) % matches.count; render() }; return true
+        case #selector(NSResponder.moveUp(_:)): if !matches.isEmpty { selection = (selection + matches.count - 1) % matches.count; render() }; return true
+        case #selector(NSResponder.insertNewline(_:)): launch(selection); return true
+        default: return false
+        }
+    }
+    @objc func clicked(_ sender: NSButton) { launch(sender.tag) }
+    func launch(_ i: Int) { guard matches.indices.contains(i) else { return }; let url = matches[i].url; field.stringValue = ""; refresh(); hide(); NSWorkspace.shared.openApplication(at: url, configuration: NSWorkspace.OpenConfiguration()) }
+    @objc func openSettings() { hide(); if settings == nil { settings = SettingsWindow(controller: self) }; settings?.center(); settings?.makeKeyAndOrderFront(nil); NSApp.activate(ignoringOtherApps: true) }
+}
+final class ShortcutRecorder: NSButton {
+    var onRecord: ((NSEvent) -> Void)?
+    var onBegin: (() -> Void)?
+    var onEnd: (() -> Void)?
+    override var acceptsFirstResponder: Bool { true }
+    override func mouseDown(with event: NSEvent) { if window?.makeFirstResponder(self) == true { onBegin?(); title = "Type shortcut…" } }
+    override func keyDown(with event: NSEvent) { onRecord?(event) }
+    override func performKeyEquivalent(with event: NSEvent) -> Bool { if window?.firstResponder === self { onRecord?(event); return true }; return super.performKeyEquivalent(with: event) }
+    override func resignFirstResponder() -> Bool { onEnd?(); return super.resignFirstResponder() }
+}
+final class SettingsWindow: NSWindow {
+    init(controller: Controller) {
+        super.init(contentRect: NSRect(x: 0, y: 0, width: 400, height: 210), styleMask: [.titled, .closable], backing: .buffered, defer: false)
+        title = "Rocket Up Settings"; isReleasedWhenClosed = false
+        let label = NSTextField(labelWithString: "Keyboard shortcut"); label.frame = NSRect(x: 24, y: 153, width: 180, height: 22); contentView?.addSubview(label)
+        let recorder = ShortcutRecorder(frame: NSRect(x: 220, y: 148, width: 150, height: 30)); recorder.title = controller.shortcut.displayString; recorder.bezelStyle = .rounded; contentView?.addSubview(recorder)
+        recorder.onBegin = { [weak controller] in if let key = controller?.hotKey { UnregisterEventHotKey(key); controller?.hotKey = nil } }
+        recorder.onEnd = { [weak controller, weak recorder] in
+            guard let controller else { return }
+            if controller.hotKey == nil { _ = controller.register(controller.shortcut) }
+            recorder?.title = controller.shortcut.displayString
+        }
+        recorder.onRecord = { [weak recorder, weak controller] event in
+            guard let recorder, let controller else { return }
+            if event.keyCode == UInt16(kVK_Escape) { recorder.window?.makeFirstResponder(nil); return }
+            guard let candidate = Shortcut(keyCode: event.keyCode, modifiers: event.modifierFlags) else { NSSound.beep(); return }
+            if controller.register(candidate) { recorder.window?.makeFirstResponder(nil) } else { NSSound.beep(); recorder.title = "Unavailable" }
+        }
+        let login = NSButton(checkboxWithTitle: "Launch at login", target: nil, action: nil); login.frame = NSRect(x: 24, y: 98, width: 250, height: 24); login.state = SMAppService.mainApp.status == .enabled ? .on : .off; login.target = self; login.action = #selector(toggleLogin(_:)); contentView?.addSubview(login)
+        let access = NSButton(title: "Include User Applications…", target: self, action: #selector(chooseApps)); access.frame = NSRect(x: 24, y: 42, width: 235, height: 30); contentView?.addSubview(access)
+        self.controller = controller
+    }
+    weak var controller: Controller?
+    @objc func chooseApps() { controller?.chooseUserApplications() }
+    @objc func toggleLogin(_ sender: NSButton) { do { if sender.state == .on { try SMAppService.mainApp.register() } else { try SMAppService.mainApp.unregister() } } catch { sender.state = SMAppService.mainApp.status == .enabled ? .on : .off; NSAlert(error: error).runModal() } }
+}
+let app = NSApplication.shared
+let controller = Controller()
+app.delegate = controller
+let menu = NSMenu(); let appItem = NSMenuItem(); menu.addItem(appItem); let appMenu = NSMenu(); appMenu.addItem(withTitle: "Settings…", action: #selector(Controller.openSettings), keyEquivalent: ",").target = controller; appItem.submenu = appMenu; app.mainMenu = menu
+app.run()

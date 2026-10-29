@@ -1,0 +1,203 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		100000000000000000000010 /* AppIcon.icon in Resources */ = {isa = PBXBuildFile; fileRef = 100000000000000000000009 /* AppIcon.icon */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		100000000000000000000008 /* RocketUp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = RocketUp.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		100000000000000000000009 /* AppIcon.icon */ = {isa = PBXFileReference; lastKnownFileType = folder.iconcomposer.icon; path = AppIcon.icon; sourceTree = "<group>"; };
+		10000000000000000000000A /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		10000000000000000000000B /* Version.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Version.xcconfig; sourceTree = "<group>"; };
+		10000000000000000000000C /* RocketUp.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = RocketUp.xcconfig; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		100000000000000000000017 /* Exceptions for RocketUp sources */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (App.entitlements, );
+			target = 100000000000000000000002 /* RocketUp */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
+/* Begin PBXFileSystemSynchronizedRootGroup section */
+		100000000000000000000004 /* RocketUp */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (100000000000000000000017 /* Exceptions for RocketUp sources */, );
+			path = Sources/RocketUp;
+			sourceTree = "<group>";
+		};
+/* End PBXFileSystemSynchronizedRootGroup section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		10000000000000000000000E /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = ();
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		100000000000000000000003 = {
+			isa = PBXGroup;
+			children = (
+				100000000000000000000004 /* RocketUp */,
+				100000000000000000000005 /* Assets */,
+				100000000000000000000006 /* Configuration */,
+				100000000000000000000007 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		100000000000000000000005 /* Assets */ = {
+			isa = PBXGroup;
+			children = (100000000000000000000009 /* AppIcon.icon */, );
+			path = Assets;
+			sourceTree = "<group>";
+		};
+		100000000000000000000006 /* Configuration */ = {
+			isa = PBXGroup;
+			children = (
+				10000000000000000000000C /* RocketUp.xcconfig */,
+				10000000000000000000000B /* Version.xcconfig */,
+				10000000000000000000000A /* Info.plist */,
+			);
+			path = Configuration;
+			sourceTree = "<group>";
+		};
+		100000000000000000000007 /* Products */ = {
+			isa = PBXGroup;
+			children = (100000000000000000000008 /* RocketUp.app */, );
+			name = Products;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		100000000000000000000002 /* RocketUp */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 100000000000000000000011 /* Build configuration list for PBXNativeTarget "RocketUp" */;
+			buildPhases = (
+				10000000000000000000000D /* Sources */,
+				10000000000000000000000E /* Frameworks */,
+				10000000000000000000000F /* Resources */,
+			);
+			buildRules = ();
+			dependencies = ();
+			fileSystemSynchronizedGroups = (100000000000000000000004 /* RocketUp */, );
+			name = RocketUp;
+			productName = RocketUp;
+			productReference = 100000000000000000000008 /* RocketUp.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		100000000000000000000001 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastSwiftUpdateCheck = 2710;
+				LastUpgradeCheck = 2710;
+				TargetAttributes = {
+					100000000000000000000002 = {
+						CreatedOnToolsVersion = 27.1;
+						DevelopmentTeam = JUB99UJD56;
+						ProvisioningStyle = Automatic;
+						SystemCapabilities = {com.apple.Sandbox = {enabled = 1; }; };
+					};
+				};
+			};
+			buildConfigurationList = 100000000000000000000012 /* Build configuration list for PBXProject "RocketUp" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (en, Base, );
+			mainGroup = 100000000000000000000003;
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 100000000000000000000007 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (100000000000000000000002 /* RocketUp */, );
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		10000000000000000000000F /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (100000000000000000000010 /* AppIcon.icon in Resources */, );
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		10000000000000000000000D /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = ();
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		100000000000000000000013 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CLANG_ENABLE_MODULES = YES;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				GCC_PREPROCESSOR_DEFINITIONS = ("DEBUG=1", "$(inherited)", );
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = macosx;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		100000000000000000000014 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CLANG_ENABLE_MODULES = YES;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ONLY_ACTIVE_ARCH = NO;
+				SDKROOT = macosx;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+			};
+			name = Release;
+		};
+		100000000000000000000015 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = 10000000000000000000000C /* RocketUp.xcconfig */;
+			buildSettings = {PRODUCT_BUNDLE_IDENTIFIER = com.taglab.rocketup; };
+			name = Debug;
+		};
+		100000000000000000000016 /* Release */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = 10000000000000000000000C /* RocketUp.xcconfig */;
+			buildSettings = {PRODUCT_BUNDLE_IDENTIFIER = com.taglab.rocketup; };
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		100000000000000000000011 /* Build configuration list for PBXNativeTarget "RocketUp" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (100000000000000000000015 /* Debug */, 100000000000000000000016 /* Release */, );
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		100000000000000000000012 /* Build configuration list for PBXProject "RocketUp" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (100000000000000000000013 /* Debug */, 100000000000000000000014 /* Release */, );
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 100000000000000000000001 /* Project object */;
+}

@@ -174,6 +174,8 @@ final class Controller: NSObject, NSApplicationDelegate, NSWindowDelegate, NSTex
     var hotKey: EventHotKeyRef?
     var handler: EventHandlerRef?
     var settings: NSWindow?
+    var statusItem: NSStatusItem?
+    var showLauncherItem: NSMenuItem?
     var shortcut = Shortcut.load(from: .standard)
     var monitor: Any?
     var hiding = false
@@ -182,6 +184,7 @@ final class Controller: NSObject, NSApplicationDelegate, NSWindowDelegate, NSTex
         NSApp.setActivationPolicy(.accessory)
         startIndex()
         createPanel()
+        updateMenuBarIcon()
         var spec = EventTypeSpec(eventClass: OSType(kEventClassKeyboard), eventKind: UInt32(kEventHotKeyPressed))
         InstallEventHandler(GetApplicationEventTarget(), { _, _, user in
             guard let user else { return noErr }
@@ -199,12 +202,37 @@ final class Controller: NSObject, NSApplicationDelegate, NSWindowDelegate, NSTex
         index.changed = { [weak self] in self?.refresh() }
     }
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool { if !flag { show() }; return false }
+    var menuBarIconVisible: Bool { UserDefaults.standard.object(forKey: "showMenuBarIcon") as? Bool ?? true }
+    func setMenuBarIconVisible(_ visible: Bool) {
+        UserDefaults.standard.set(visible, forKey: "showMenuBarIcon")
+        updateMenuBarIcon()
+    }
+    func updateMenuBarIcon() {
+        guard menuBarIconVisible else {
+            if let statusItem { NSStatusBar.system.removeStatusItem(statusItem) }
+            statusItem = nil; showLauncherItem = nil
+            return
+        }
+        guard statusItem == nil else { return }
+        let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
+        item.button?.image = NSImage(systemSymbolName: "rocket.fill", accessibilityDescription: "Rocket Up")
+        let menu = NSMenu(); menu.autoenablesItems = false
+        let show = NSMenuItem(title: "Show Launcher", action: #selector(showLauncher(_:)), keyEquivalent: shortcut.keyEquivalent)
+        show.keyEquivalentModifierMask = shortcut.modifiers; show.target = self; menu.addItem(show)
+        let settingsItem = NSMenuItem(title: "Settings…", action: #selector(openSettings), keyEquivalent: ",")
+        settingsItem.target = self; menu.addItem(settingsItem)
+        item.menu = menu; statusItem = item; showLauncherItem = show
+    }
+    @objc func showLauncher(_ sender: Any?) { show() }
     @discardableResult func register(_ shortcut: Shortcut) -> Bool {
         var newKey: EventHotKeyRef?
         let status = RegisterEventHotKey(UInt32(shortcut.keyCode), shortcut.carbonModifiers, EventHotKeyID(signature: 0x524f434b, id: 1), GetApplicationEventTarget(), 0, &newKey)
         guard status == noErr else { return false }
         if let hotKey { UnregisterEventHotKey(hotKey) }
-        hotKey = newKey; self.shortcut = shortcut; shortcut.save(to: .standard); return true
+        hotKey = newKey; self.shortcut = shortcut; shortcut.save(to: .standard)
+        showLauncherItem?.keyEquivalent = shortcut.keyEquivalent
+        showLauncherItem?.keyEquivalentModifierMask = shortcut.modifiers
+        return true
     }
     func createPanel() {
         panel = Panel(contentRect: NSRect(x: 0, y: 0, width: width, height: header), styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
@@ -295,10 +323,10 @@ final class ShortcutRecorder: NSButton {
 }
 final class SettingsWindow: NSWindow {
     init(controller: Controller) {
-        super.init(contentRect: NSRect(x: 0, y: 0, width: 400, height: 165), styleMask: [.titled, .closable], backing: .buffered, defer: false)
+        super.init(contentRect: NSRect(x: 0, y: 0, width: 400, height: 200), styleMask: [.titled, .closable], backing: .buffered, defer: false)
         title = "Rocket Up Settings"; isReleasedWhenClosed = false
-        let label = NSTextField(labelWithString: "Keyboard shortcut"); label.frame = NSRect(x: 24, y: 108, width: 180, height: 22); contentView?.addSubview(label)
-        let recorder = ShortcutRecorder(frame: NSRect(x: 220, y: 103, width: 150, height: 30)); recorder.title = controller.shortcut.displayString; recorder.bezelStyle = .rounded; contentView?.addSubview(recorder)
+        let label = NSTextField(labelWithString: "Keyboard shortcut"); label.frame = NSRect(x: 24, y: 143, width: 180, height: 22); contentView?.addSubview(label)
+        let recorder = ShortcutRecorder(frame: NSRect(x: 220, y: 138, width: 150, height: 30)); recorder.title = controller.shortcut.displayString; recorder.bezelStyle = .rounded; contentView?.addSubview(recorder)
         recorder.onBegin = { [weak controller] in if let key = controller?.hotKey { UnregisterEventHotKey(key); controller?.hotKey = nil } }
         recorder.onEnd = { [weak controller, weak recorder] in
             guard let controller else { return }
@@ -311,8 +339,12 @@ final class SettingsWindow: NSWindow {
             guard let candidate = Shortcut(keyCode: event.keyCode, modifiers: event.modifierFlags) else { NSSound.beep(); return }
             if controller.register(candidate) { recorder.window?.makeFirstResponder(nil) } else { NSSound.beep(); recorder.title = "Unavailable" }
         }
-        let login = NSButton(checkboxWithTitle: "Launch at login", target: nil, action: nil); login.frame = NSRect(x: 24, y: 53, width: 250, height: 24); login.state = SMAppService.mainApp.status == .enabled ? .on : .off; login.target = self; login.action = #selector(toggleLogin(_:)); contentView?.addSubview(login)
+        let login = NSButton(checkboxWithTitle: "Launch at login", target: nil, action: nil); login.frame = NSRect(x: 24, y: 93, width: 250, height: 24); login.state = SMAppService.mainApp.status == .enabled ? .on : .off; login.target = self; login.action = #selector(toggleLogin(_:)); contentView?.addSubview(login)
+        let icon = NSButton(checkboxWithTitle: "Show menu bar icon", target: self, action: #selector(toggleMenuBarIcon(_:))); icon.frame = NSRect(x: 24, y: 53, width: 250, height: 24); icon.state = controller.menuBarIconVisible ? .on : .off; contentView?.addSubview(icon)
+        self.controller = controller
     }
+    weak var controller: Controller?
+    @objc func toggleMenuBarIcon(_ sender: NSButton) { controller?.setMenuBarIconVisible(sender.state == .on) }
     @objc func toggleLogin(_ sender: NSButton) { do { if sender.state == .on { try SMAppService.mainApp.register() } else { try SMAppService.mainApp.unregister() } } catch { sender.state = SMAppService.mainApp.status == .enabled ? .on : .off; NSAlert(error: error).runModal() } }
 }
 func makeMainMenu(controller: Controller) -> NSMenu {

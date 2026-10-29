@@ -82,15 +82,25 @@ let controller = Controller()
 controller.startIndex()
 controller.createPanel()
 app.mainMenu = makeMainMenu(controller: controller)
+UserDefaults.standard.removeObject(forKey: "showMenuBarIcon")
+precondition(controller.menuBarIconVisible, "Menu bar icon should be enabled by default")
+controller.updateMenuBarIcon()
+precondition(controller.statusItem != nil && controller.statusItem?.menu?.items.map(\.title) == ["Show Launcher", "Settings…"])
 let testShortcut = Shortcut(keyCode: UInt16(kVK_F19), modifiers: [.control, .option, .shift])!
 precondition(controller.register(testShortcut), "Could not register global test shortcut")
+precondition(controller.showLauncherItem?.keyEquivalent == testShortcut.keyEquivalent && controller.showLauncherItem?.keyEquivalentModifierMask == testShortcut.modifiers, "Menu shortcut did not update")
 let nextShortcut = Shortcut(keyCode: UInt16(kVK_F18), modifiers: [.control, .option, .shift])!
 precondition(controller.register(nextShortcut), "Could not remap global test shortcut")
+precondition(controller.showLauncherItem?.keyEquivalent == nextShortcut.keyEquivalent, "Menu shortcut did not follow remapping")
+controller.setMenuBarIconVisible(false)
+precondition(controller.statusItem == nil && !controller.menuBarIconVisible, "Menu bar icon did not hide")
+controller.setMenuBarIconVisible(true)
+precondition(controller.statusItem != nil && controller.showLauncherItem?.keyEquivalent == nextShortcut.keyEquivalent, "Menu bar icon did not return with the saved shortcut")
 if let key = controller.hotKey { UnregisterEventHotKey(key); controller.hotKey = nil }
 controller.field.stringValue = "test"
 precondition(controller.command(#selector(NSResponder.cancelOperation(_:))))
 precondition(controller.field.stringValue.isEmpty)
-controller.show()
+controller.showLauncher(nil)
 precondition(controller.panel.isVisible)
 controller.field.stringValue = "sample"
 controller.panel.makeFirstResponder(controller.field)

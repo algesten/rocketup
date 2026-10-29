@@ -1,6 +1,6 @@
 # Rocket Up
 
-A native macOS 27 app launcher. It runs without a Dock or menu bar icon. Press ⌘\ to open it; use ⌘, in the launcher to change the shortcut or enable launch at login. If a shortcut is assigned to macOS, release it in System Settings before assigning it here. Quit using Force Quit.
+A native macOS 27 app launcher. It runs without a Dock icon and shows a menu bar icon by default. Press ⌘\ to open it; use ⌘, in the launcher or the menu bar menu to change the shortcut, toggle the menu bar icon, or enable launch at login. If a shortcut is assigned to macOS, release it in System Settings before assigning it here. Quit using Force Quit.
 
 Searches app bundles in `/Applications`, `/System/Applications`, and `~/Applications`, including subfolders. The sandbox uses a read-only home-relative temporary exception for `~/Applications`. Search ranks exact names, full-name prefixes, later word prefixes, then initials; space and punctuation insensitive matching is a fallback. Changes are observed with filesystem events. Everything stays local.
 

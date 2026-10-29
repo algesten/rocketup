@@ -82,6 +82,9 @@ precondition(wait { !controller.index.entries.isEmpty })
 controller.field.stringValue = "s"
 controller.refresh()
 precondition(!controller.matches.isEmpty && controller.matches.count <= 5)
+precondition(abs(controller.list.frame.maxY - (controller.panel.contentView!.bounds.height - controller.header + 8)) < 1, "Results must stay below the search field while the panel expands")
+RunLoop.current.run(until: Date().addingTimeInterval(0.1))
+precondition(abs(controller.list.frame.maxY - (controller.panel.contentView!.bounds.height - controller.header + 8)) < 1, "Results must remain anchored below the search field after resizing")
 if let snapshot = ProcessInfo.processInfo.environment["ROCKETUP_SNAPSHOT"] {
     RunLoop.current.run(until: Date().addingTimeInterval(0.2))
     let view = controller.panel.contentView!

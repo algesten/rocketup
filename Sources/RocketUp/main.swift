@@ -211,7 +211,7 @@ final class Controller: NSObject, NSApplicationDelegate, NSWindowDelegate, NSTex
         let searchIcon = NSImageView(frame: NSRect(x: 22, y: 24, width: 22, height: 22)); searchIcon.image = NSImage(systemSymbolName: "magnifyingglass", accessibilityDescription: "Search"); searchIcon.contentTintColor = NSColor.white.withAlphaComponent(0.7); searchIcon.autoresizingMask = [.minYMargin]; content.addSubview(searchIcon)
         field.frame = NSRect(x: 56, y: 17, width: width - 76, height: 36); field.autoresizingMask = [.minYMargin, .width]; field.font = .systemFont(ofSize: 24); field.placeholderString = "RocketUp Search"; field.isBordered = false; field.drawsBackground = false; field.focusRingType = .none; field.delegate = self
         field.command = { [weak self] selector in self?.command(selector) ?? false }; content.addSubview(field)
-        list.frame = NSRect(x: 10, y: 8, width: width - 20, height: 0); list.autoresizingMask = [.width]; content.addSubview(list)
+        list.frame = NSRect(x: 10, y: 8, width: width - 20, height: 0); list.autoresizingMask = [.width, .minYMargin]; content.addSubview(list)
     }
     func toggle() { if panel.isVisible && !hiding { hide() } else { show() } }
     func show() {
@@ -241,7 +241,8 @@ final class Controller: NSObject, NSApplicationDelegate, NSWindowDelegate, NSTex
         var frame = panel.frame; frame.origin.y += frame.height - height; frame.size.height = height
         // A short animation completes within the 50 ms interaction budget.
         NSAnimationContext.runAnimationGroup { c in c.duration = 0.035; panel.animator().setFrame(frame, display: true) }
-        list.frame = NSRect(x: 10, y: 8, width: width - 20, height: CGFloat(matches.count) * row)
+        let listHeight = CGFloat(matches.count) * row
+        list.frame = NSRect(x: 10, y: panel.contentView!.bounds.height - header - listHeight + 8, width: width - 20, height: listHeight)
         for (i, app) in matches.enumerated() {
             let item = NSButton(frame: NSRect(x: 0, y: CGFloat(matches.count - i - 1) * row, width: width - 20, height: row))
             item.isBordered = false; item.title = ""; item.target = self; item.action = #selector(clicked(_:)); item.tag = i; item.wantsLayer = true; item.layer?.cornerRadius = 12; item.layer?.backgroundColor = (i == selection ? NSColor.white.withAlphaComponent(0.18) : .clear).cgColor

@@ -8,7 +8,7 @@ import QuartzCore
 func textShadow() -> NSShadow {
     let shadow = NSShadow()
     shadow.shadowColor = NSColor.black.withAlphaComponent(0.9)
-    shadow.shadowBlurRadius = 1.5
+    shadow.shadowBlurRadius = 2.5
     shadow.shadowOffset = .zero
     return shadow
 }

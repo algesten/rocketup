@@ -191,7 +191,7 @@ final class ShadowImageView: NSView {
         NSColor.white.withAlphaComponent(0.7).setStroke()
         let symbol = NSBezierPath(ovalIn: NSRect(x: 4, y: 10, width: 16, height: 16))
         symbol.lineWidth = 2.5; symbol.lineCapStyle = .round
-        symbol.move(to: NSPoint(x: 17, y: 13)); symbol.line(to: NSPoint(x: 26, y: 4)); symbol.stroke()
+        symbol.move(to: NSPoint(x: 17.66, y: 12.34)); symbol.line(to: NSPoint(x: 26, y: 4)); symbol.stroke()
         NSGraphicsContext.restoreGraphicsState()
     }
 }

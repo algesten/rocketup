@@ -5,6 +5,14 @@ import ServiceManagement
 import Darwin
 import QuartzCore
 
+func textShadow() -> NSShadow {
+    let shadow = NSShadow()
+    shadow.shadowColor = NSColor.black.withAlphaComponent(0.9)
+    shadow.shadowBlurRadius = 3
+    shadow.shadowOffset = NSSize(width: 0, height: -1)
+    return shadow
+}
+
 func addForegroundShadow(_ view: NSView) {
     view.wantsLayer = true
     view.layer?.shadowColor = NSColor.black.cgColor
@@ -320,8 +328,8 @@ final class Controller: NSObject, NSApplicationDelegate, NSWindowDelegate, NSTex
                 item.layer?.mask = mask
             }
             let icon = NSImageView(frame: NSRect(x: 7, y: 4, width: 46, height: 46)); icon.imageScaling = .scaleProportionallyUpOrDown; icon.image = app.icon; item.addSubview(icon)
-            let label = NSTextField(labelWithString: app.name); label.font = .systemFont(ofSize: 18, weight: .medium); label.textColor = .white; addForegroundShadow(label); label.frame = NSRect(x: 64, y: app.duplicate ? 25 : 16, width: width - 120, height: 24); item.addSubview(label)
-            if app.duplicate { let path = NSTextField(labelWithString: app.url.deletingLastPathComponent().path); path.font = .systemFont(ofSize: 11); path.textColor = NSColor.white.withAlphaComponent(0.8); addForegroundShadow(path); path.frame = NSRect(x: 64, y: 7, width: width - 120, height: 16); item.addSubview(path) }
+            let label = NSTextField(labelWithString: app.name); label.font = .systemFont(ofSize: 18, weight: .medium); label.textColor = .white; label.attributedStringValue = NSAttributedString(string: app.name, attributes: [.font: label.font!, .foregroundColor: NSColor.white, .shadow: textShadow()]); label.frame = NSRect(x: 64, y: app.duplicate ? 25 : 16, width: width - 120, height: 24); item.addSubview(label)
+            if app.duplicate { let path = NSTextField(labelWithString: app.url.deletingLastPathComponent().path); path.font = .systemFont(ofSize: 11); path.textColor = NSColor.white.withAlphaComponent(0.8); path.attributedStringValue = NSAttributedString(string: path.stringValue, attributes: [.font: path.font!, .foregroundColor: NSColor.white.withAlphaComponent(0.8), .shadow: textShadow()]); path.frame = NSRect(x: 64, y: 7, width: width - 120, height: 16); item.addSubview(path) }
             list.addSubview(item)
         }
     }

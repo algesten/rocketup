@@ -342,16 +342,21 @@ final class ShortcutRecorder: NSButton {
     override func resignFirstResponder() -> Bool { onEnd?(); return super.resignFirstResponder() }
 }
 final class SettingsWindow: NSWindow {
+    private let defaultButton = NSButton(title: "Use Default", target: nil, action: nil)
+    private weak var recorder: ShortcutRecorder?
     init(controller: Controller) {
-        super.init(contentRect: NSRect(x: 0, y: 0, width: 400, height: 200), styleMask: [.titled, .closable], backing: .buffered, defer: false)
+        super.init(contentRect: NSRect(x: 0, y: 0, width: 460, height: 200), styleMask: [.titled, .closable], backing: .buffered, defer: false)
         title = "Rocket Up Settings"; isReleasedWhenClosed = false
-        let label = NSTextField(labelWithString: "Keyboard shortcut"); label.frame = NSRect(x: 24, y: 143, width: 180, height: 22); contentView?.addSubview(label)
-        let recorder = ShortcutRecorder(frame: NSRect(x: 220, y: 138, width: 150, height: 30)); recorder.title = controller.shortcut.displayString; recorder.bezelStyle = .rounded; contentView?.addSubview(recorder)
+        let label = NSTextField(labelWithString: "Keyboard shortcut:"); label.frame = NSRect(x: 24, y: 143, width: 146, height: 22); contentView?.addSubview(label)
+        let recorder = ShortcutRecorder(frame: NSRect(x: 172, y: 138, width: 150, height: 32)); recorder.title = controller.shortcut.displayString; recorder.bezelStyle = .rounded; contentView?.addSubview(recorder)
+        self.recorder = recorder
+        defaultButton.frame = NSRect(x: 328, y: 138, width: 112, height: 32); defaultButton.bezelStyle = .rounded; defaultButton.target = self; defaultButton.action = #selector(useDefault); defaultButton.isEnabled = controller.shortcut != .default; contentView?.addSubview(defaultButton)
         recorder.onBegin = { [weak controller] in if let key = controller?.hotKey { UnregisterEventHotKey(key); controller?.hotKey = nil } }
         recorder.onEnd = { [weak controller, weak recorder] in
             guard let controller else { return }
             if controller.hotKey == nil { _ = controller.register(controller.shortcut) }
             recorder?.title = controller.shortcut.displayString
+            (recorder?.window as? SettingsWindow)?.defaultButton.isEnabled = controller.shortcut != .default
         }
         recorder.onRecord = { [weak recorder, weak controller] event in
             guard let recorder, let controller else { return }
@@ -365,6 +370,12 @@ final class SettingsWindow: NSWindow {
     }
     weak var controller: Controller?
     @objc func toggleMenuBarIcon(_ sender: NSButton) { controller?.setMenuBarIconVisible(sender.state == .on) }
+    @objc func useDefault() {
+        guard let controller else { return }
+        if controller.shortcut == .default || controller.register(.default) {
+            recorder?.title = controller.shortcut.displayString; defaultButton.isEnabled = false
+        } else { NSSound.beep() }
+    }
     @objc func toggleLogin(_ sender: NSButton) { do { if sender.state == .on { try SMAppService.mainApp.register() } else { try SMAppService.mainApp.unregister() } } catch { sender.state = SMAppService.mainApp.status == .enabled ? .on : .off; NSAlert(error: error).runModal() } }
 }
 func makeMainMenu(controller: Controller) -> NSMenu {

@@ -97,6 +97,16 @@ controller.setMenuBarIconVisible(false)
 precondition(controller.statusItem == nil && !controller.menuBarIconVisible, "Menu bar icon did not hide")
 controller.setMenuBarIconVisible(true)
 precondition(controller.statusItem != nil && controller.showLauncherItem?.keyEquivalent == nextShortcut.keyEquivalent, "Menu bar icon did not return with the saved shortcut")
+let settings = SettingsWindow(controller: controller)
+precondition(settings.title == "Rocket Up Settings")
+let settingsButtons = settings.contentView!.subviews.compactMap { $0 as? NSButton }
+let loginToggle = settingsButtons.first { $0.title == "Launch at login" }!
+let iconToggle = settingsButtons.first { $0.title == "Show menu bar icon" }!
+precondition(loginToggle.frame.origin == NSPoint(x: 24, y: 93) && iconToggle.frame.origin == NSPoint(x: 24, y: 53), "Shared settings controls are not aligned")
+let reset = settings.contentView!.subviews.compactMap { $0 as? NSButton }.first { $0.title == "Use Default" }!
+precondition(reset.isEnabled)
+reset.performClick(nil)
+precondition(controller.shortcut == .default && !reset.isEnabled, "Use Default did not restore the shortcut")
 if let key = controller.hotKey { UnregisterEventHotKey(key); controller.hotKey = nil }
 controller.field.stringValue = "test"
 precondition(controller.command(#selector(NSResponder.cancelOperation(_:))))

@@ -184,11 +184,23 @@ final class Highlights: NSView {
     }
     override func hitTest(_ point: NSPoint) -> NSView? { nil }
 }
-final class ShadowImageView: NSImageView {
+final class ShadowImageView: NSView {
     override func draw(_ dirtyRect: NSRect) {
         NSGraphicsContext.saveGraphicsState()
         textShadow().set()
-        super.draw(dirtyRect)
+        NSColor.white.withAlphaComponent(0.7).setStroke()
+        let circle = NSBezierPath(ovalIn: NSRect(x: 4, y: 10, width: 16, height: 16))
+        circle.lineWidth = 2.5; circle.stroke()
+        let handle = NSBezierPath(); handle.lineWidth = 2.5; handle.lineCapStyle = .round
+        handle.move(to: NSPoint(x: 18, y: 12)); handle.line(to: NSPoint(x: 26, y: 4)); handle.stroke()
+        NSGraphicsContext.restoreGraphicsState()
+    }
+}
+final class ShadowLayoutManager: NSLayoutManager {
+    override func drawGlyphs(forGlyphRange glyphsToShow: NSRange, at origin: NSPoint) {
+        NSGraphicsContext.saveGraphicsState()
+        textShadow().set()
+        super.drawGlyphs(forGlyphRange: glyphsToShow, at: origin)
         NSGraphicsContext.restoreGraphicsState()
     }
 }
@@ -204,6 +216,18 @@ final class Controller: NSObject, NSApplicationDelegate, NSWindowDelegate, NSTex
     var index: Index!
     var panel: Panel!
     let field = SearchField(frame: .zero)
+    let fieldEditor: NSTextView = {
+        let storage = NSTextStorage()
+        let layout = ShadowLayoutManager()
+        let container = NSTextContainer(containerSize: NSSize(width: 0, height: CGFloat.greatestFiniteMagnitude))
+        storage.addLayoutManager(layout); layout.addTextContainer(container)
+        let editor = NSTextView(frame: .zero, textContainer: container)
+        editor.isFieldEditor = true
+        return editor
+    }()
+    func windowWillReturnFieldEditor(_ sender: NSWindow, to client: Any?) -> Any? {
+        (client as AnyObject?) === field ? fieldEditor : nil
+    }
     let list = NSView()
     var matches: [AppEntry] = []
     var selection = 0
@@ -278,7 +302,7 @@ final class Controller: NSObject, NSApplicationDelegate, NSWindowDelegate, NSTex
         let content = NSView(frame: glass.bounds); content.autoresizingMask = [.width, .height]; glass.contentView = content
         panel.contentView!.addSubview(glass)
         let highlights = Highlights(frame: panel.contentView!.bounds); highlights.autoresizingMask = [.width, .height]; panel.contentView!.addSubview(highlights)
-        let searchIcon = ShadowImageView(frame: NSRect(x: 25, y: 20, width: 30, height: 30)); searchIcon.image = NSImage(systemSymbolName: "magnifyingglass", accessibilityDescription: "Search")?.withSymbolConfiguration(NSImage.SymbolConfiguration(pointSize: 24, weight: .regular)); searchIcon.contentTintColor = NSColor.white.withAlphaComponent(0.7); searchIcon.autoresizingMask = [.minYMargin]; content.addSubview(searchIcon)
+        let searchIcon = ShadowImageView(frame: NSRect(x: 25, y: 20, width: 30, height: 30)); searchIcon.autoresizingMask = [.minYMargin]; content.addSubview(searchIcon)
         field.frame = NSRect(x: 74, y: 13, width: width - 94, height: 36); field.autoresizingMask = [.minYMargin, .width]; field.font = .systemFont(ofSize: 24); field.placeholderAttributedString = NSAttributedString(string: "RocketUp Search", attributes: [.foregroundColor: NSColor.white.withAlphaComponent(0.7), .font: NSFont.systemFont(ofSize: 24), .shadow: textShadow()]); field.isBordered = false; field.drawsBackground = false; field.focusRingType = .none; field.delegate = self
         field.command = { [weak self] selector in self?.command(selector) ?? false }; content.addSubview(field)
         list.frame = NSRect(x: 10, y: 10, width: width - 20, height: 0); list.autoresizingMask = [.width, .minYMargin]; content.addSubview(list)

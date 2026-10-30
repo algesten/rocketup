@@ -13,14 +13,6 @@ func textShadow() -> NSShadow {
     return shadow
 }
 
-func addForegroundShadow(_ view: NSView) {
-    view.wantsLayer = true
-    view.layer?.shadowColor = NSColor.black.cgColor
-    view.layer?.shadowOpacity = 1
-    view.layer?.shadowRadius = 3
-    view.layer?.shadowOffset = CGSize(width: 0, height: -2)
-}
-
 let userHome = getpwuid(getuid()).map { String(cString: $0.pointee.pw_dir) } ?? NSHomeDirectory()
 
 struct AppEntry {
@@ -192,6 +184,14 @@ final class Highlights: NSView {
     }
     override func hitTest(_ point: NSPoint) -> NSView? { nil }
 }
+final class ShadowImageView: NSImageView {
+    override func draw(_ dirtyRect: NSRect) {
+        NSGraphicsContext.saveGraphicsState()
+        textShadow().set()
+        super.draw(dirtyRect)
+        NSGraphicsContext.restoreGraphicsState()
+    }
+}
 final class SearchField: NSTextField {
     var command: ((Selector) -> Bool)?
     override func doCommand(by selector: Selector) { if command?(selector) != true { super.doCommand(by: selector) } }
@@ -278,9 +278,9 @@ final class Controller: NSObject, NSApplicationDelegate, NSWindowDelegate, NSTex
         let content = NSView(frame: glass.bounds); content.autoresizingMask = [.width, .height]; glass.contentView = content
         panel.contentView!.addSubview(glass)
         let highlights = Highlights(frame: panel.contentView!.bounds); highlights.autoresizingMask = [.width, .height]; panel.contentView!.addSubview(highlights)
-        let searchIcon = NSImageView(frame: NSRect(x: 25, y: 20, width: 30, height: 30)); searchIcon.image = NSImage(systemSymbolName: "magnifyingglass", accessibilityDescription: "Search")?.withSymbolConfiguration(NSImage.SymbolConfiguration(pointSize: 24, weight: .regular)); searchIcon.contentTintColor = NSColor.white.withAlphaComponent(0.7); addForegroundShadow(searchIcon); searchIcon.autoresizingMask = [.minYMargin]; content.addSubview(searchIcon)
-        field.frame = NSRect(x: 74, y: 13, width: width - 94, height: 36); field.autoresizingMask = [.minYMargin, .width]; field.font = .systemFont(ofSize: 24); field.placeholderString = "RocketUp Search"; field.isBordered = false; field.drawsBackground = false; field.focusRingType = .none; field.delegate = self
-        addForegroundShadow(field); field.command = { [weak self] selector in self?.command(selector) ?? false }; content.addSubview(field)
+        let searchIcon = ShadowImageView(frame: NSRect(x: 25, y: 20, width: 30, height: 30)); searchIcon.image = NSImage(systemSymbolName: "magnifyingglass", accessibilityDescription: "Search")?.withSymbolConfiguration(NSImage.SymbolConfiguration(pointSize: 24, weight: .regular)); searchIcon.contentTintColor = NSColor.white.withAlphaComponent(0.7); searchIcon.autoresizingMask = [.minYMargin]; content.addSubview(searchIcon)
+        field.frame = NSRect(x: 74, y: 13, width: width - 94, height: 36); field.autoresizingMask = [.minYMargin, .width]; field.font = .systemFont(ofSize: 24); field.placeholderAttributedString = NSAttributedString(string: "RocketUp Search", attributes: [.foregroundColor: NSColor.white.withAlphaComponent(0.7), .font: NSFont.systemFont(ofSize: 24), .shadow: textShadow()]); field.isBordered = false; field.drawsBackground = false; field.focusRingType = .none; field.delegate = self
+        field.command = { [weak self] selector in self?.command(selector) ?? false }; content.addSubview(field)
         list.frame = NSRect(x: 10, y: 10, width: width - 20, height: 0); list.autoresizingMask = [.width, .minYMargin]; content.addSubview(list)
     }
     func toggle() { if panel.isVisible && !hiding { hide() } else { show() } }
@@ -290,7 +290,13 @@ final class Controller: NSObject, NSApplicationDelegate, NSWindowDelegate, NSTex
         let frame = screen.visibleFrame
         panel.setFrameOrigin(NSPoint(x: frame.midX - width / 2, y: frame.maxY - frame.height * 0.22 - panel.frame.height))
         panel.alphaValue = 0; panel.makeKeyAndOrderFront(nil); NSApp.activate(ignoringOtherApps: true); panel.makeFirstResponder(field)
-        (field.currentEditor() as? NSTextView)?.allowsUndo = true
+        if let editor = field.currentEditor() as? NSTextView {
+            editor.allowsUndo = true
+            var attributes = editor.typingAttributes
+            attributes[.shadow] = textShadow()
+            editor.typingAttributes = attributes
+            editor.textStorage?.addAttribute(.shadow, value: textShadow(), range: NSRange(location: 0, length: editor.textStorage?.length ?? 0))
+        }
         field.currentEditor()?.selectAll(nil)
         NSAnimationContext.runAnimationGroup { c in c.duration = 0.05; panel.animator().alphaValue = 1 }
     }

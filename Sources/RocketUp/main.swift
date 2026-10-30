@@ -8,9 +8,9 @@ import QuartzCore
 func addForegroundShadow(_ view: NSView) {
     view.wantsLayer = true
     view.layer?.shadowColor = NSColor.black.cgColor
-    view.layer?.shadowOpacity = 0.7
-    view.layer?.shadowRadius = 2
-    view.layer?.shadowOffset = CGSize(width: 0, height: -1)
+    view.layer?.shadowOpacity = 1
+    view.layer?.shadowRadius = 3
+    view.layer?.shadowOffset = CGSize(width: 0, height: -2)
 }
 
 let userHome = getpwuid(getuid()).map { String(cString: $0.pointee.pw_dir) } ?? NSHomeDirectory()

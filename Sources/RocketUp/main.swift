@@ -259,7 +259,7 @@ final class Controller: NSObject, NSApplicationDelegate, NSWindowDelegate, NSTex
         panel.isOpaque = false; panel.backgroundColor = .clear; panel.hasShadow = true; panel.level = .floating
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]; panel.delegate = self; panel.isReleasedWhenClosed = false
         let glass = NSGlassEffectView(frame: panel.contentView!.bounds); glass.autoresizingMask = [.width, .height]; glass.style = .clear; glass.cornerRadius = launcherCornerRadius
-        let content = NSVisualEffectView(frame: glass.bounds); content.autoresizingMask = [.width, .height]; content.material = .popover; content.blendingMode = .withinWindow; content.state = .active; glass.contentView = content
+        let content = NSView(frame: glass.bounds); content.autoresizingMask = [.width, .height]; glass.contentView = content
         panel.contentView!.addSubview(glass)
         let highlights = Highlights(frame: panel.contentView!.bounds); highlights.autoresizingMask = [.width, .height]; panel.contentView!.addSubview(highlights)
         let searchIcon = NSImageView(frame: NSRect(x: 25, y: 20, width: 30, height: 30)); searchIcon.image = NSImage(systemSymbolName: "magnifyingglass", accessibilityDescription: "Search")?.withSymbolConfiguration(NSImage.SymbolConfiguration(pointSize: 24, weight: .regular)); searchIcon.contentTintColor = NSColor.secondaryLabelColor; searchIcon.autoresizingMask = [.minYMargin]; content.addSubview(searchIcon)

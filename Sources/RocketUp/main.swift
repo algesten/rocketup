@@ -258,11 +258,11 @@ final class Controller: NSObject, NSApplicationDelegate, NSWindowDelegate, NSTex
         panel = Panel(contentRect: NSRect(x: 0, y: 0, width: width, height: header), styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
         panel.isOpaque = false; panel.backgroundColor = .clear; panel.hasShadow = true; panel.level = .floating
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]; panel.delegate = self; panel.isReleasedWhenClosed = false
-        let glass = NSGlassEffectView(frame: panel.contentView!.bounds); glass.autoresizingMask = [.width, .height]; glass.appearance = NSAppearance(named: .darkAqua); glass.style = .clear; glass.cornerRadius = launcherCornerRadius
+        let glass = NSGlassEffectView(frame: panel.contentView!.bounds); glass.autoresizingMask = [.width, .height]; glass.style = .regular; glass.cornerRadius = launcherCornerRadius
         let content = NSView(frame: glass.bounds); content.autoresizingMask = [.width, .height]; glass.contentView = content
         panel.contentView!.addSubview(glass)
         let highlights = Highlights(frame: panel.contentView!.bounds); highlights.autoresizingMask = [.width, .height]; panel.contentView!.addSubview(highlights)
-        let searchIcon = NSImageView(frame: NSRect(x: 25, y: 20, width: 30, height: 30)); searchIcon.image = NSImage(systemSymbolName: "magnifyingglass", accessibilityDescription: "Search")?.withSymbolConfiguration(NSImage.SymbolConfiguration(pointSize: 24, weight: .regular)); searchIcon.contentTintColor = NSColor.white.withAlphaComponent(0.7); searchIcon.autoresizingMask = [.minYMargin]; content.addSubview(searchIcon)
+        let searchIcon = NSImageView(frame: NSRect(x: 25, y: 20, width: 30, height: 30)); searchIcon.image = NSImage(systemSymbolName: "magnifyingglass", accessibilityDescription: "Search")?.withSymbolConfiguration(NSImage.SymbolConfiguration(pointSize: 24, weight: .regular)); searchIcon.contentTintColor = NSColor.secondaryLabelColor; searchIcon.autoresizingMask = [.minYMargin]; content.addSubview(searchIcon)
         field.frame = NSRect(x: 74, y: 13, width: width - 94, height: 36); field.autoresizingMask = [.minYMargin, .width]; field.font = .systemFont(ofSize: 24); field.placeholderString = "RocketUp Search"; field.isBordered = false; field.drawsBackground = false; field.focusRingType = .none; field.delegate = self
         field.command = { [weak self] selector in self?.command(selector) ?? false }; content.addSubview(field)
         list.frame = NSRect(x: 10, y: 10, width: width - 20, height: 0); list.autoresizingMask = [.width, .minYMargin]; content.addSubview(list)
@@ -304,7 +304,7 @@ final class Controller: NSObject, NSApplicationDelegate, NSWindowDelegate, NSTex
         list.frame = NSRect(x: 10, y: panel.contentView!.bounds.height - header - listHeight + 10, width: width - 20, height: listHeight)
         for (i, app) in matches.enumerated() {
             let item = NSButton(frame: NSRect(x: 0, y: CGFloat(matches.count - i - 1) * row, width: width - 20, height: row))
-            item.isBordered = false; item.title = ""; item.target = self; item.action = #selector(clicked(_:)); item.tag = i; item.wantsLayer = true; item.layer?.cornerRadius = 12; item.layer?.backgroundColor = (i == selection ? NSColor.white.withAlphaComponent(0.18) : .clear).cgColor
+            item.isBordered = false; item.title = ""; item.target = self; item.action = #selector(clicked(_:)); item.tag = i; item.wantsLayer = true; item.layer?.cornerRadius = 12; item.layer?.backgroundColor = (i == selection ? NSColor.selectedContentBackgroundColor.withAlphaComponent(0.35) : .clear).cgColor
             if i == matches.count - 1 {
                 let mask = CAShapeLayer()
                 var flip = CGAffineTransform(translationX: 0, y: item.bounds.height).scaledBy(x: 1, y: -1)
@@ -312,8 +312,8 @@ final class Controller: NSObject, NSApplicationDelegate, NSWindowDelegate, NSTex
                 item.layer?.mask = mask
             }
             let icon = NSImageView(frame: NSRect(x: 7, y: 4, width: 46, height: 46)); icon.imageScaling = .scaleProportionallyUpOrDown; icon.image = app.icon; item.addSubview(icon)
-            let label = NSTextField(labelWithString: app.name); label.font = .systemFont(ofSize: 18, weight: .medium); label.textColor = .white; label.frame = NSRect(x: 64, y: app.duplicate ? 25 : 16, width: width - 120, height: 24); item.addSubview(label)
-            if app.duplicate { let path = NSTextField(labelWithString: app.url.deletingLastPathComponent().path); path.font = .systemFont(ofSize: 11); path.textColor = NSColor.white.withAlphaComponent(0.65); path.frame = NSRect(x: 64, y: 7, width: width - 120, height: 16); item.addSubview(path) }
+            let label = NSTextField(labelWithString: app.name); label.font = .systemFont(ofSize: 18, weight: .medium); label.textColor = .labelColor; label.frame = NSRect(x: 64, y: app.duplicate ? 25 : 16, width: width - 120, height: 24); item.addSubview(label)
+            if app.duplicate { let path = NSTextField(labelWithString: app.url.deletingLastPathComponent().path); path.font = .systemFont(ofSize: 11); path.textColor = .secondaryLabelColor; path.frame = NSRect(x: 64, y: 7, width: width - 120, height: 16); item.addSubview(path) }
             list.addSubview(item)
         }
     }

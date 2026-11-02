@@ -189,7 +189,7 @@ final class ShadowImageView: NSView {
     override func draw(_ dirtyRect: NSRect) {
         NSGraphicsContext.saveGraphicsState()
         if shadowEnabled { textShadow().set() }
-        NSColor.labelColor.withAlphaComponent(0.7).setStroke()
+        NSColor.white.withAlphaComponent(0.7).setStroke()
         let symbol = NSBezierPath(ovalIn: NSRect(x: 4, y: 10, width: 16, height: 16))
         symbol.lineWidth = 2.5; symbol.lineCapStyle = .round
         symbol.move(to: NSPoint(x: 17.66, y: 12.34)); symbol.line(to: NSPoint(x: 26, y: 4)); symbol.stroke()
@@ -280,7 +280,7 @@ final class Controller: NSObject, NSApplicationDelegate, NSWindowDelegate, NSTex
         return attributes
     }
     func updateTextAppearance() {
-        let color = NSColor.labelColor
+        let color = NSColor.white
         field.textColor = color
         field.placeholderAttributedString = NSAttributedString(string: "RocketUp Search", attributes: textAttributes(color: color.withAlphaComponent(0.7), font: .systemFont(ofSize: 24)))
         searchIcon?.shadowEnabled = !fullGlass
@@ -390,8 +390,8 @@ final class Controller: NSObject, NSApplicationDelegate, NSWindowDelegate, NSTex
                 item.layer?.mask = mask
             }
             let icon = NSImageView(frame: NSRect(x: 7, y: 4, width: 46, height: 46)); icon.imageScaling = .scaleProportionallyUpOrDown; icon.image = app.icon; item.addSubview(icon)
-            let label = NSTextField(labelWithString: app.name); label.font = .systemFont(ofSize: 18, weight: .medium); label.textColor = .labelColor; label.attributedStringValue = NSAttributedString(string: app.name, attributes: textAttributes(color: .labelColor, font: label.font!)); label.frame = NSRect(x: 64, y: app.duplicate ? 25 : 16, width: width - 120, height: 24); item.addSubview(label)
-            if app.duplicate { let path = NSTextField(labelWithString: app.url.deletingLastPathComponent().path); path.font = .systemFont(ofSize: 11); path.textColor = NSColor.secondaryLabelColor; path.attributedStringValue = NSAttributedString(string: path.stringValue, attributes: textAttributes(color: .secondaryLabelColor, font: path.font!)); path.frame = NSRect(x: 64, y: 7, width: width - 120, height: 16); item.addSubview(path) }
+            let label = NSTextField(labelWithString: app.name); label.font = .systemFont(ofSize: 18, weight: .medium); label.textColor = .white; label.attributedStringValue = NSAttributedString(string: app.name, attributes: textAttributes(color: .white, font: label.font!)); label.frame = NSRect(x: 64, y: app.duplicate ? 25 : 16, width: width - 120, height: 24); item.addSubview(label)
+            if app.duplicate { let path = NSTextField(labelWithString: app.url.deletingLastPathComponent().path); path.font = .systemFont(ofSize: 11); path.textColor = NSColor.white.withAlphaComponent(0.8); path.attributedStringValue = NSAttributedString(string: path.stringValue, attributes: textAttributes(color: NSColor.white.withAlphaComponent(0.8), font: path.font!)); path.frame = NSRect(x: 64, y: 7, width: width - 120, height: 16); item.addSubview(path) }
             list.addSubview(item)
         }
     }

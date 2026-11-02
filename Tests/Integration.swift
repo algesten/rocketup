@@ -106,7 +106,9 @@ let iconToggle = settingsButtons.first { $0.title == "Show menu bar icon" }!
 let glassToggle = settingsButtons.first { $0.title == "Full glass" }!
 precondition(loginToggle.frame.minX == 24 && iconToggle.frame.minX == 24 && glassToggle.frame.minX == 24, "Settings controls are not aligned")
 precondition(!controller.fullGlass && controller.glassView?.style == .regular && controller.glassShade?.isHidden == false && glassToggle.state == .off, "Regular glass should be the default")
+precondition(controller.textAttributes(color: .white, font: .systemFont(ofSize: 24))[.shadow] == nil, "Regular glass should not have text shadows")
 glassToggle.performClick(nil)
+precondition(controller.textAttributes(color: .white, font: .systemFont(ofSize: 24))[.shadow] != nil && controller.searchIcon?.shadowEnabled == true, "Full glass should have text shadows")
 precondition(controller.fullGlass && controller.glassView?.style == .clear && controller.glassShade?.isHidden == true && Controller().fullGlass, "Full glass was not applied and saved")
 glassToggle.performClick(nil)
 precondition(!controller.fullGlass && controller.glassView?.style == .regular && controller.glassShade?.isHidden == false, "Regular glass was not restored")

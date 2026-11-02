@@ -276,23 +276,23 @@ final class Controller: NSObject, NSApplicationDelegate, NSWindowDelegate, NSTex
     }
     func textAttributes(color: NSColor, font: NSFont) -> [NSAttributedString.Key: Any] {
         var attributes: [NSAttributedString.Key: Any] = [.foregroundColor: color, .font: font]
-        if !fullGlass { attributes[.shadow] = textShadow() }
+        if fullGlass { attributes[.shadow] = textShadow() }
         return attributes
     }
     func updateTextAppearance() {
         let color = NSColor.white
         field.textColor = color
         field.placeholderAttributedString = NSAttributedString(string: "RocketUp Search", attributes: textAttributes(color: color.withAlphaComponent(0.7), font: .systemFont(ofSize: 24)))
-        searchIcon?.shadowEnabled = !fullGlass
-        (fieldEditor.layoutManager as? ShadowLayoutManager)?.shadowEnabled = !fullGlass
+        searchIcon?.shadowEnabled = fullGlass
+        (fieldEditor.layoutManager as? ShadowLayoutManager)?.shadowEnabled = fullGlass
         if let editor = field.currentEditor() as? NSTextView {
             var attributes = editor.typingAttributes
             attributes[.foregroundColor] = color
-            attributes[.shadow] = fullGlass ? nil : textShadow()
+            attributes[.shadow] = fullGlass ? textShadow() : nil
             editor.typingAttributes = attributes
             let range = NSRange(location: 0, length: editor.textStorage?.length ?? 0)
             editor.textStorage?.removeAttribute(.shadow, range: range)
-            if !fullGlass { editor.textStorage?.addAttribute(.shadow, value: textShadow(), range: range) }
+            if fullGlass { editor.textStorage?.addAttribute(.shadow, value: textShadow(), range: range) }
             editor.needsDisplay = true
         }
     }

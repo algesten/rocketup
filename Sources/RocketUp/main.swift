@@ -152,7 +152,7 @@ func menuBarRocketImage() -> NSImage {
         return true
     }
     image.isTemplate = true
-    image.accessibilityDescription = "Rocket Up"
+    image.accessibilityDescription = "RocketUp"
     return image
 }
 
@@ -256,7 +256,7 @@ final class Controller: NSObject, NSApplicationDelegate, NSWindowDelegate, NSTex
             return noErr
         }, 1, &spec, Unmanaged.passUnretained(self).toOpaque(), &handler)
         if !register(shortcut) {
-            let alert = NSAlert(); alert.messageText = "Shortcut unavailable"; alert.informativeText = "The saved shortcut is in use. Choose another in Rocket Up settings."; alert.runModal()
+            let alert = NSAlert(); alert.messageText = "Shortcut unavailable"; alert.informativeText = "The saved shortcut is in use. Choose another in RocketUp settings."; alert.runModal()
             openSettings()
         }
         monitor = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown, .otherMouseDown]) { [weak self] _ in DispatchQueue.main.async { self?.hide() } }
@@ -424,7 +424,7 @@ final class SettingsWindow: NSWindow {
     private weak var recorder: ShortcutRecorder?
     init(controller: Controller) {
         super.init(contentRect: NSRect(x: 0, y: 0, width: 460, height: 240), styleMask: [.titled, .closable], backing: .buffered, defer: false)
-        title = "Rocket Up Settings"; isReleasedWhenClosed = false
+        title = "RocketUp Settings"; isReleasedWhenClosed = false
         let label = NSTextField(labelWithString: "Keyboard shortcut:"); label.frame = NSRect(x: 24, y: 183, width: 146, height: 22); contentView?.addSubview(label)
         let recorder = ShortcutRecorder(frame: NSRect(x: 172, y: 178, width: 150, height: 32)); recorder.title = controller.shortcut.displayString; recorder.bezelStyle = .rounded; contentView?.addSubview(recorder)
         self.recorder = recorder

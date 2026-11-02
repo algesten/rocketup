@@ -99,7 +99,7 @@ precondition(controller.statusItem == nil && !controller.menuBarIconVisible, "Me
 controller.setMenuBarIconVisible(true)
 precondition(controller.statusItem != nil && controller.showLauncherItem?.keyEquivalent == nextShortcut.keyEquivalent, "Menu bar icon did not return with the saved shortcut")
 let settings = SettingsWindow(controller: controller)
-precondition(settings.title == "Rocket Up Settings")
+precondition(settings.title == "RocketUp Settings")
 let settingsButtons = settings.contentView!.subviews.compactMap { $0 as? NSButton }
 let loginToggle = settingsButtons.first { $0.title == "Launch at login" }!
 let iconToggle = settingsButtons.first { $0.title == "Show menu bar icon" }!

@@ -1,4 +1,4 @@
-# Rocket Up
+# RocketUp
 
 A native macOS 27 app launcher. It runs without a Dock icon and shows a menu bar icon by default. Press ⌘\ to open it; use ⌘, in the launcher or the menu bar menu to change the shortcut, toggle the menu bar icon, or enable launch at login. If a shortcut is assigned to macOS, release it in System Settings before assigning it here. Quit using Force Quit.
 

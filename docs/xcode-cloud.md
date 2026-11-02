@@ -1,6 +1,6 @@
 # Xcode Cloud releases
 
-Rocket Up uses `RocketUp.xcodeproj`, the shared `RocketUp` scheme, and automatic signing for team `JUB99UJD56`.
+RocketUp uses `RocketUp.xcodeproj`, the shared `RocketUp` scheme, and automatic signing for team `JUB99UJD56`.
 
 | Workflow | Start condition | Action |
 | --- | --- | --- |

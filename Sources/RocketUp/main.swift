@@ -332,6 +332,9 @@ final class Controller: NSObject, NSApplicationDelegate, NSWindowDelegate, NSTex
         panel = Panel(contentRect: NSRect(x: 0, y: 0, width: width, height: header), styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
         panel.isOpaque = false; panel.backgroundColor = .clear; panel.hasShadow = true; panel.level = .floating
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]; panel.delegate = self; panel.isReleasedWhenClosed = false
+        panel.contentView?.wantsLayer = true
+        panel.contentView?.layer?.cornerRadius = launcherCornerRadius
+        panel.contentView?.layer?.masksToBounds = true
         let glass = NSGlassEffectView(frame: panel.contentView!.bounds); glass.autoresizingMask = [.width, .height]; glass.appearance = NSAppearance(named: .darkAqua); glass.style = fullGlass ? .clear : .regular; glass.cornerRadius = launcherCornerRadius
         let content = NSView(frame: glass.bounds); content.autoresizingMask = [.width, .height]; glass.contentView = content
         let shade = NSView(frame: content.bounds); shade.autoresizingMask = [.width, .height]; shade.wantsLayer = true
@@ -361,6 +364,7 @@ final class Controller: NSObject, NSApplicationDelegate, NSWindowDelegate, NSTex
         hiding = true
         NSAnimationContext.runAnimationGroup({ c in c.duration = 0.05; panel.animator().alphaValue = 0 }, completionHandler: { [weak self] in guard let self, self.hiding else { return }; self.panel.orderOut(nil); self.hiding = false })
     }
+    func windowDidResize(_ notification: Notification) { if notification.object as? NSWindow === panel { panel.invalidateShadow() } }
     func windowDidResignKey(_ notification: Notification) { if notification.object as? NSWindow === panel { hide() } }
     func controlTextDidChange(_ obj: Notification) { selection = 0; refresh() }
     func control(_ control: NSControl, textView: NSTextView, doCommandBy commandSelector: Selector) -> Bool {

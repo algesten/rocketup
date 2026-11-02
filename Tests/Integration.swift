@@ -78,6 +78,7 @@ for query in ["s", "ch", "gc", "notes", "visualstudio"] {
     }
 }
 print("Search computation worst observed: \(String(format: "%.2f", maxSearch)) ms across \(installed.entries.count) apps")
+UserDefaults.standard.removeObject(forKey: "fullGlass")
 let controller = Controller()
 controller.startIndex()
 controller.createPanel()
@@ -102,7 +103,14 @@ precondition(settings.title == "Rocket Up Settings")
 let settingsButtons = settings.contentView!.subviews.compactMap { $0 as? NSButton }
 let loginToggle = settingsButtons.first { $0.title == "Launch at login" }!
 let iconToggle = settingsButtons.first { $0.title == "Show menu bar icon" }!
-precondition(loginToggle.frame.origin == NSPoint(x: 24, y: 93) && iconToggle.frame.origin == NSPoint(x: 24, y: 53), "Shared settings controls are not aligned")
+let glassToggle = settingsButtons.first { $0.title == "Full glass" }!
+precondition(loginToggle.frame.minX == 24 && iconToggle.frame.minX == 24 && glassToggle.frame.minX == 24, "Settings controls are not aligned")
+precondition(!controller.fullGlass && controller.glassView?.style == .regular && glassToggle.state == .off, "Regular glass should be the default")
+glassToggle.performClick(nil)
+precondition(controller.fullGlass && controller.glassView?.style == .clear && Controller().fullGlass, "Full glass was not applied and saved")
+glassToggle.performClick(nil)
+precondition(!controller.fullGlass && controller.glassView?.style == .regular, "Regular glass was not restored")
+UserDefaults.standard.removeObject(forKey: "fullGlass")
 let reset = settings.contentView!.subviews.compactMap { $0 as? NSButton }.first { $0.title == "Use Default" }!
 precondition(reset.isEnabled)
 reset.performClick(nil)

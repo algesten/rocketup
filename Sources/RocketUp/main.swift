@@ -233,6 +233,7 @@ final class Controller: NSObject, NSApplicationDelegate, NSWindowDelegate, NSTex
     var hotKey: EventHotKeyRef?
     var handler: EventHandlerRef?
     var settings: NSWindow?
+    var glassView: NSGlassEffectView?
     var statusItem: NSStatusItem?
     var showLauncherItem: NSMenuItem?
     var shortcut = Shortcut.load(from: .standard)
@@ -261,6 +262,11 @@ final class Controller: NSObject, NSApplicationDelegate, NSWindowDelegate, NSTex
         index.changed = { [weak self] in self?.refresh() }
     }
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool { if !flag { show() }; return false }
+    var fullGlass: Bool { UserDefaults.standard.bool(forKey: "fullGlass") }
+    func setFullGlass(_ enabled: Bool) {
+        UserDefaults.standard.set(enabled, forKey: "fullGlass")
+        glassView?.style = enabled ? .clear : .regular
+    }
     var menuBarIconVisible: Bool { UserDefaults.standard.object(forKey: "showMenuBarIcon") as? Bool ?? true }
     func setMenuBarIconVisible(_ visible: Bool) {
         UserDefaults.standard.set(visible, forKey: "showMenuBarIcon")
@@ -297,9 +303,9 @@ final class Controller: NSObject, NSApplicationDelegate, NSWindowDelegate, NSTex
         panel = Panel(contentRect: NSRect(x: 0, y: 0, width: width, height: header), styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
         panel.isOpaque = false; panel.backgroundColor = .clear; panel.hasShadow = true; panel.level = .floating
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]; panel.delegate = self; panel.isReleasedWhenClosed = false
-        let glass = NSGlassEffectView(frame: panel.contentView!.bounds); glass.autoresizingMask = [.width, .height]; glass.appearance = NSAppearance(named: .darkAqua); glass.style = .clear; glass.cornerRadius = launcherCornerRadius
+        let glass = NSGlassEffectView(frame: panel.contentView!.bounds); glass.autoresizingMask = [.width, .height]; glass.appearance = NSAppearance(named: .darkAqua); glass.style = fullGlass ? .clear : .regular; glass.cornerRadius = launcherCornerRadius
         let content = NSView(frame: glass.bounds); content.autoresizingMask = [.width, .height]; glass.contentView = content
-        panel.contentView!.addSubview(glass)
+        panel.contentView!.addSubview(glass); glassView = glass
         let highlights = Highlights(frame: panel.contentView!.bounds); highlights.autoresizingMask = [.width, .height]; panel.contentView!.addSubview(highlights)
         let searchIcon = ShadowImageView(frame: NSRect(x: 25, y: 20, width: 30, height: 30)); searchIcon.autoresizingMask = [.minYMargin]; content.addSubview(searchIcon)
         field.frame = NSRect(x: 74, y: 13, width: width - 94, height: 36); field.autoresizingMask = [.minYMargin, .width]; field.font = .systemFont(ofSize: 24); field.placeholderAttributedString = NSAttributedString(string: "RocketUp Search", attributes: [.foregroundColor: NSColor.white.withAlphaComponent(0.7), .font: NSFont.systemFont(ofSize: 24), .shadow: textShadow()]); field.isBordered = false; field.drawsBackground = false; field.focusRingType = .none; field.delegate = self
@@ -390,12 +396,12 @@ final class SettingsWindow: NSWindow {
     private let defaultButton = NSButton(title: "Use Default", target: nil, action: nil)
     private weak var recorder: ShortcutRecorder?
     init(controller: Controller) {
-        super.init(contentRect: NSRect(x: 0, y: 0, width: 460, height: 200), styleMask: [.titled, .closable], backing: .buffered, defer: false)
+        super.init(contentRect: NSRect(x: 0, y: 0, width: 460, height: 240), styleMask: [.titled, .closable], backing: .buffered, defer: false)
         title = "Rocket Up Settings"; isReleasedWhenClosed = false
-        let label = NSTextField(labelWithString: "Keyboard shortcut:"); label.frame = NSRect(x: 24, y: 143, width: 146, height: 22); contentView?.addSubview(label)
-        let recorder = ShortcutRecorder(frame: NSRect(x: 172, y: 138, width: 150, height: 32)); recorder.title = controller.shortcut.displayString; recorder.bezelStyle = .rounded; contentView?.addSubview(recorder)
+        let label = NSTextField(labelWithString: "Keyboard shortcut:"); label.frame = NSRect(x: 24, y: 183, width: 146, height: 22); contentView?.addSubview(label)
+        let recorder = ShortcutRecorder(frame: NSRect(x: 172, y: 178, width: 150, height: 32)); recorder.title = controller.shortcut.displayString; recorder.bezelStyle = .rounded; contentView?.addSubview(recorder)
         self.recorder = recorder
-        defaultButton.frame = NSRect(x: 328, y: 138, width: 112, height: 32); defaultButton.bezelStyle = .rounded; defaultButton.target = self; defaultButton.action = #selector(useDefault); defaultButton.isEnabled = controller.shortcut != .default; contentView?.addSubview(defaultButton)
+        defaultButton.frame = NSRect(x: 328, y: 178, width: 112, height: 32); defaultButton.bezelStyle = .rounded; defaultButton.target = self; defaultButton.action = #selector(useDefault); defaultButton.isEnabled = controller.shortcut != .default; contentView?.addSubview(defaultButton)
         recorder.onBegin = { [weak controller] in if let key = controller?.hotKey { UnregisterEventHotKey(key); controller?.hotKey = nil } }
         recorder.onEnd = { [weak controller, weak recorder] in
             guard let controller else { return }
@@ -409,11 +415,13 @@ final class SettingsWindow: NSWindow {
             guard let candidate = Shortcut(keyCode: event.keyCode, modifiers: event.modifierFlags) else { NSSound.beep(); return }
             if controller.register(candidate) { recorder.window?.makeFirstResponder(nil) } else { NSSound.beep(); recorder.title = "Unavailable" }
         }
-        let login = NSButton(checkboxWithTitle: "Launch at login", target: nil, action: nil); login.frame = NSRect(x: 24, y: 93, width: 250, height: 24); login.state = SMAppService.mainApp.status == .enabled ? .on : .off; login.target = self; login.action = #selector(toggleLogin(_:)); contentView?.addSubview(login)
-        let icon = NSButton(checkboxWithTitle: "Show menu bar icon", target: self, action: #selector(toggleMenuBarIcon(_:))); icon.frame = NSRect(x: 24, y: 53, width: 250, height: 24); icon.state = controller.menuBarIconVisible ? .on : .off; contentView?.addSubview(icon)
+        let login = NSButton(checkboxWithTitle: "Launch at login", target: nil, action: nil); login.frame = NSRect(x: 24, y: 133, width: 250, height: 24); login.state = SMAppService.mainApp.status == .enabled ? .on : .off; login.target = self; login.action = #selector(toggleLogin(_:)); contentView?.addSubview(login)
+        let icon = NSButton(checkboxWithTitle: "Show menu bar icon", target: self, action: #selector(toggleMenuBarIcon(_:))); icon.frame = NSRect(x: 24, y: 93, width: 250, height: 24); icon.state = controller.menuBarIconVisible ? .on : .off; contentView?.addSubview(icon)
+        let glass = NSButton(checkboxWithTitle: "Full glass", target: self, action: #selector(toggleFullGlass(_:))); glass.frame = NSRect(x: 24, y: 53, width: 250, height: 24); glass.state = controller.fullGlass ? .on : .off; contentView?.addSubview(glass)
         self.controller = controller
     }
     weak var controller: Controller?
+    @objc func toggleFullGlass(_ sender: NSButton) { controller?.setFullGlass(sender.state == .on) }
     @objc func toggleMenuBarIcon(_ sender: NSButton) { controller?.setMenuBarIconVisible(sender.state == .on) }
     @objc func useDefault() {
         guard let controller else { return }

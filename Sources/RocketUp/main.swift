@@ -185,10 +185,11 @@ final class Highlights: NSView {
     override func hitTest(_ point: NSPoint) -> NSView? { nil }
 }
 final class ShadowImageView: NSView {
+    var shadowEnabled = true { didSet { needsDisplay = true } }
     override func draw(_ dirtyRect: NSRect) {
         NSGraphicsContext.saveGraphicsState()
-        textShadow().set()
-        NSColor.white.withAlphaComponent(0.7).setStroke()
+        if shadowEnabled { textShadow().set() }
+        NSColor.labelColor.withAlphaComponent(0.7).setStroke()
         let symbol = NSBezierPath(ovalIn: NSRect(x: 4, y: 10, width: 16, height: 16))
         symbol.lineWidth = 2.5; symbol.lineCapStyle = .round
         symbol.move(to: NSPoint(x: 17.66, y: 12.34)); symbol.line(to: NSPoint(x: 26, y: 4)); symbol.stroke()
@@ -196,9 +197,10 @@ final class ShadowImageView: NSView {
     }
 }
 final class ShadowLayoutManager: NSLayoutManager {
+    var shadowEnabled = true
     override func drawGlyphs(forGlyphRange glyphsToShow: NSRange, at origin: NSPoint) {
         NSGraphicsContext.saveGraphicsState()
-        textShadow().set()
+        if shadowEnabled { textShadow().set() }
         super.drawGlyphs(forGlyphRange: glyphsToShow, at: origin)
         NSGraphicsContext.restoreGraphicsState()
     }
@@ -234,6 +236,8 @@ final class Controller: NSObject, NSApplicationDelegate, NSWindowDelegate, NSTex
     var handler: EventHandlerRef?
     var settings: NSWindow?
     var glassView: NSGlassEffectView?
+    var glassShade: NSView?
+    var searchIcon: ShadowImageView?
     var statusItem: NSStatusItem?
     var showLauncherItem: NSMenuItem?
     var shortcut = Shortcut.load(from: .standard)
@@ -266,6 +270,31 @@ final class Controller: NSObject, NSApplicationDelegate, NSWindowDelegate, NSTex
     func setFullGlass(_ enabled: Bool) {
         UserDefaults.standard.set(enabled, forKey: "fullGlass")
         glassView?.style = enabled ? .clear : .regular
+        glassShade?.isHidden = enabled
+        updateTextAppearance()
+        if index != nil { render() }
+    }
+    func textAttributes(color: NSColor, font: NSFont) -> [NSAttributedString.Key: Any] {
+        var attributes: [NSAttributedString.Key: Any] = [.foregroundColor: color, .font: font]
+        if !fullGlass { attributes[.shadow] = textShadow() }
+        return attributes
+    }
+    func updateTextAppearance() {
+        let color = NSColor.labelColor
+        field.textColor = color
+        field.placeholderAttributedString = NSAttributedString(string: "RocketUp Search", attributes: textAttributes(color: color.withAlphaComponent(0.7), font: .systemFont(ofSize: 24)))
+        searchIcon?.shadowEnabled = !fullGlass
+        (fieldEditor.layoutManager as? ShadowLayoutManager)?.shadowEnabled = !fullGlass
+        if let editor = field.currentEditor() as? NSTextView {
+            var attributes = editor.typingAttributes
+            attributes[.foregroundColor] = color
+            attributes[.shadow] = fullGlass ? nil : textShadow()
+            editor.typingAttributes = attributes
+            let range = NSRange(location: 0, length: editor.textStorage?.length ?? 0)
+            editor.textStorage?.removeAttribute(.shadow, range: range)
+            if !fullGlass { editor.textStorage?.addAttribute(.shadow, value: textShadow(), range: range) }
+            editor.needsDisplay = true
+        }
     }
     var menuBarIconVisible: Bool { UserDefaults.standard.object(forKey: "showMenuBarIcon") as? Bool ?? true }
     func setMenuBarIconVisible(_ visible: Bool) {
@@ -305,12 +334,16 @@ final class Controller: NSObject, NSApplicationDelegate, NSWindowDelegate, NSTex
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]; panel.delegate = self; panel.isReleasedWhenClosed = false
         let glass = NSGlassEffectView(frame: panel.contentView!.bounds); glass.autoresizingMask = [.width, .height]; glass.appearance = NSAppearance(named: .darkAqua); glass.style = fullGlass ? .clear : .regular; glass.cornerRadius = launcherCornerRadius
         let content = NSView(frame: glass.bounds); content.autoresizingMask = [.width, .height]; glass.contentView = content
+        let shade = NSView(frame: content.bounds); shade.autoresizingMask = [.width, .height]; shade.wantsLayer = true
+        shade.layer?.backgroundColor = NSColor.black.withAlphaComponent(0.35).cgColor; shade.layer?.cornerRadius = launcherCornerRadius
+        shade.isHidden = fullGlass; content.addSubview(shade); glassShade = shade
         panel.contentView!.addSubview(glass); glassView = glass
         let highlights = Highlights(frame: panel.contentView!.bounds); highlights.autoresizingMask = [.width, .height]; panel.contentView!.addSubview(highlights)
-        let searchIcon = ShadowImageView(frame: NSRect(x: 25, y: 20, width: 30, height: 30)); searchIcon.autoresizingMask = [.minYMargin]; content.addSubview(searchIcon)
-        field.frame = NSRect(x: 74, y: 13, width: width - 94, height: 36); field.autoresizingMask = [.minYMargin, .width]; field.font = .systemFont(ofSize: 24); field.placeholderAttributedString = NSAttributedString(string: "RocketUp Search", attributes: [.foregroundColor: NSColor.white.withAlphaComponent(0.7), .font: NSFont.systemFont(ofSize: 24), .shadow: textShadow()]); field.isBordered = false; field.drawsBackground = false; field.focusRingType = .none; field.delegate = self
+        let searchIcon = ShadowImageView(frame: NSRect(x: 25, y: 20, width: 30, height: 30)); searchIcon.autoresizingMask = [.minYMargin]; content.addSubview(searchIcon); self.searchIcon = searchIcon
+        field.frame = NSRect(x: 74, y: 13, width: width - 94, height: 36); field.autoresizingMask = [.minYMargin, .width]; field.font = .systemFont(ofSize: 24); field.isBordered = false; field.drawsBackground = false; field.focusRingType = .none; field.delegate = self
         field.command = { [weak self] selector in self?.command(selector) ?? false }; content.addSubview(field)
         list.frame = NSRect(x: 10, y: 10, width: width - 20, height: 0); list.autoresizingMask = [.width, .minYMargin]; content.addSubview(list)
+        updateTextAppearance()
     }
     func toggle() { if panel.isVisible && !hiding { hide() } else { show() } }
     func show() {
@@ -319,13 +352,7 @@ final class Controller: NSObject, NSApplicationDelegate, NSWindowDelegate, NSTex
         let frame = screen.visibleFrame
         panel.setFrameOrigin(NSPoint(x: frame.midX - width / 2, y: frame.maxY - frame.height * 0.22 - panel.frame.height))
         panel.alphaValue = 0; panel.makeKeyAndOrderFront(nil); NSApp.activate(ignoringOtherApps: true); panel.makeFirstResponder(field)
-        if let editor = field.currentEditor() as? NSTextView {
-            editor.allowsUndo = true
-            var attributes = editor.typingAttributes
-            attributes[.shadow] = textShadow()
-            editor.typingAttributes = attributes
-            editor.textStorage?.addAttribute(.shadow, value: textShadow(), range: NSRange(location: 0, length: editor.textStorage?.length ?? 0))
-        }
+        updateTextAppearance()
         field.currentEditor()?.selectAll(nil)
         NSAnimationContext.runAnimationGroup { c in c.duration = 0.05; panel.animator().alphaValue = 1 }
     }
@@ -363,8 +390,8 @@ final class Controller: NSObject, NSApplicationDelegate, NSWindowDelegate, NSTex
                 item.layer?.mask = mask
             }
             let icon = NSImageView(frame: NSRect(x: 7, y: 4, width: 46, height: 46)); icon.imageScaling = .scaleProportionallyUpOrDown; icon.image = app.icon; item.addSubview(icon)
-            let label = NSTextField(labelWithString: app.name); label.font = .systemFont(ofSize: 18, weight: .medium); label.textColor = .white; label.attributedStringValue = NSAttributedString(string: app.name, attributes: [.font: label.font!, .foregroundColor: NSColor.white, .shadow: textShadow()]); label.frame = NSRect(x: 64, y: app.duplicate ? 25 : 16, width: width - 120, height: 24); item.addSubview(label)
-            if app.duplicate { let path = NSTextField(labelWithString: app.url.deletingLastPathComponent().path); path.font = .systemFont(ofSize: 11); path.textColor = NSColor.white.withAlphaComponent(0.8); path.attributedStringValue = NSAttributedString(string: path.stringValue, attributes: [.font: path.font!, .foregroundColor: NSColor.white.withAlphaComponent(0.8), .shadow: textShadow()]); path.frame = NSRect(x: 64, y: 7, width: width - 120, height: 16); item.addSubview(path) }
+            let label = NSTextField(labelWithString: app.name); label.font = .systemFont(ofSize: 18, weight: .medium); label.textColor = .labelColor; label.attributedStringValue = NSAttributedString(string: app.name, attributes: textAttributes(color: .labelColor, font: label.font!)); label.frame = NSRect(x: 64, y: app.duplicate ? 25 : 16, width: width - 120, height: 24); item.addSubview(label)
+            if app.duplicate { let path = NSTextField(labelWithString: app.url.deletingLastPathComponent().path); path.font = .systemFont(ofSize: 11); path.textColor = NSColor.secondaryLabelColor; path.attributedStringValue = NSAttributedString(string: path.stringValue, attributes: textAttributes(color: .secondaryLabelColor, font: path.font!)); path.frame = NSRect(x: 64, y: 7, width: width - 120, height: 16); item.addSubview(path) }
             list.addSubview(item)
         }
     }

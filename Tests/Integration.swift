@@ -105,11 +105,11 @@ let loginToggle = settingsButtons.first { $0.title == "Launch at login" }!
 let iconToggle = settingsButtons.first { $0.title == "Show menu bar icon" }!
 let glassToggle = settingsButtons.first { $0.title == "Full glass" }!
 precondition(loginToggle.frame.minX == 24 && iconToggle.frame.minX == 24 && glassToggle.frame.minX == 24, "Settings controls are not aligned")
-precondition(!controller.fullGlass && controller.glassView?.style == .regular && glassToggle.state == .off, "Regular glass should be the default")
+precondition(!controller.fullGlass && controller.glassView?.style == .regular && controller.glassShade?.isHidden == false && glassToggle.state == .off, "Regular glass should be the default")
 glassToggle.performClick(nil)
-precondition(controller.fullGlass && controller.glassView?.style == .clear && Controller().fullGlass, "Full glass was not applied and saved")
+precondition(controller.fullGlass && controller.glassView?.style == .clear && controller.glassShade?.isHidden == true && Controller().fullGlass, "Full glass was not applied and saved")
 glassToggle.performClick(nil)
-precondition(!controller.fullGlass && controller.glassView?.style == .regular, "Regular glass was not restored")
+precondition(!controller.fullGlass && controller.glassView?.style == .regular && controller.glassShade?.isHidden == false, "Regular glass was not restored")
 UserDefaults.standard.removeObject(forKey: "fullGlass")
 let reset = settings.contentView!.subviews.compactMap { $0 as? NSButton }.first { $0.title == "Use Default" }!
 precondition(reset.isEnabled)

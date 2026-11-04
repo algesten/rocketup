@@ -49,6 +49,10 @@ precondition(wait { missingIndex.entries.contains { $0.name == "Later" } }, "Cre
 let installed = Index()
 precondition(wait { !installed.entries.isEmpty }, "No installed apps discovered in the sandbox")
 precondition(installed.entries.contains { $0.name == "Safari" }, "Safari not discovered in the sandbox")
+let keychainPath = "/System/Library/CoreServices/Applications/Keychain Access.app"
+if FileManager.default.fileExists(atPath: keychainPath) {
+    precondition(results(installed.entries, "keychain").contains { $0.url.path == keychainPath }, "Keychain Access not found in sandboxed search")
+}
 if let expected = ProcessInfo.processInfo.environment["ROCKETUP_EXPECT_USER_APP"] {
     precondition(installed.entries.contains { $0.name == expected && $0.local }, "User Applications app not discovered without a bookmark")
 }

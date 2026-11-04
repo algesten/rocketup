@@ -87,7 +87,7 @@ final class Index {
     private var stream: FSEventStreamRef?
     private var generation = 0
     var changed: (() -> Void)?
-    init(roots: [String] = ["/Applications", userHome + "/Applications", "/System/Applications"]) {
+    init(roots: [String] = ["/Applications", userHome + "/Applications", "/System/Applications", "/System/Library/CoreServices/Applications"]) {
         self.roots = roots.map { URL(fileURLWithPath: $0).standardizedFileURL.resolvingSymlinksInPath().path }
         var context = FSEventStreamContext(version: 0, info: Unmanaged.passUnretained(self).toOpaque(), retain: nil, release: nil, copyDescription: nil)
         let watchPaths = Set(self.roots.map { root -> String in

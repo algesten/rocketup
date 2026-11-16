@@ -379,9 +379,9 @@ final class Controller: NSObject, NSApplicationDelegate, NSWindowDelegate, NSTex
     }
     func render() {
         list.subviews.forEach { $0.removeFromSuperview() }
-        let items: [(name: String, detail: String?, icon: NSImage)]
+        let items: [(name: String, detail: String?, icon: NSImage?)]
         if let calculation {
-            items = [(calculation, "Return to copy", NSImage(systemSymbolName: "equal", accessibilityDescription: "Calculation") ?? NSImage())]
+            items = [(calculation, nil, nil)]
         } else {
             items = matches.map { ($0.name, $0.duplicate ? $0.url.deletingLastPathComponent().path : nil, $0.icon) }
         }
@@ -404,7 +404,7 @@ final class Controller: NSObject, NSApplicationDelegate, NSWindowDelegate, NSTex
                 mask.path = resultHighlightPath(in: item.bounds, bottomRadius: launcherCornerRadius - 10).copy(using: &flip)
                 item.layer?.mask = mask
             }
-            let icon = NSImageView(frame: NSRect(x: 7, y: 4, width: 46, height: 46)); icon.imageScaling = .scaleProportionallyUpOrDown; icon.image = result.icon; icon.contentTintColor = .white; item.addSubview(icon)
+            if let image = result.icon { let icon = NSImageView(frame: NSRect(x: 7, y: 4, width: 46, height: 46)); icon.imageScaling = .scaleProportionallyUpOrDown; icon.image = image; icon.contentTintColor = .white; item.addSubview(icon) }
             let label = NSTextField(labelWithString: result.name); label.font = .systemFont(ofSize: 18, weight: .medium); label.textColor = .white; label.attributedStringValue = NSAttributedString(string: result.name, attributes: textAttributes(color: .white, font: label.font!)); label.frame = NSRect(x: 64, y: result.detail == nil ? 16 : 25, width: width - 120, height: 24); item.addSubview(label)
             if let detail = result.detail { let subtitle = NSTextField(labelWithString: detail); subtitle.font = .systemFont(ofSize: 11); subtitle.textColor = NSColor.white.withAlphaComponent(0.8); subtitle.attributedStringValue = NSAttributedString(string: detail, attributes: textAttributes(color: NSColor.white.withAlphaComponent(0.8), font: subtitle.font!)); subtitle.frame = NSRect(x: 64, y: 7, width: width - 120, height: 16); item.addSubview(subtitle) }
             list.addSubview(item)

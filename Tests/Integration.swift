@@ -169,7 +169,8 @@ do {
     controller.controlTextDidChange(Notification(name: NSControl.textDidChangeNotification, object: controller.field))
     precondition(controller.calculation == expectedCalculation && controller.matches.isEmpty && controller.resultCount == 1)
     let labels = controller.list.subviews.first!.subviews.compactMap { ($0 as? NSTextField)?.stringValue }
-    precondition(labels == [expectedCalculation, "Return to copy"], "Calculation result and copy hint are missing")
+    precondition(labels == [expectedCalculation], "The calculation row should show only the result")
+    precondition(!controller.list.subviews.first!.subviews.contains { $0 is NSImageView }, "The calculation row should not have an icon")
     _ = controller.command(#selector(NSResponder.moveDown(_:)))
     _ = controller.command(#selector(NSResponder.moveUp(_:)))
     precondition(controller.selection == 0)

@@ -1,0 +1,18 @@
+{
+  "repository": "https://github.com/nicklockwood/Expression",
+  "version": "0.13.9",
+  "revision": "95ffe4c352e456cede933d9910d25b9c84039d1b",
+  "license": "MIT",
+  "files": [
+    {
+      "path": "Sources/RocketUp/Vendor/Expression.swift",
+      "upstream_path": "Sources/Expression.swift",
+      "sha256": "c3fb8a091abf9ef0d093c88e5d1232b1ebc51e61d640b60ab7fa432d11445470"
+    },
+    {
+      "path": "Sources/RocketUp/Resources/Expression-LICENSE.txt",
+      "upstream_path": "LICENSE.md",
+      "sha256": "51ebd00705cfea4ad842a44a983c85b61806548dcbb75fb618acc3e793da1cd4"
+    }
+  ]
+}

@@ -156,6 +156,47 @@ _ = controller.command(#selector(NSResponder.moveDown(_:)))
 if controller.matches.count > 1 { precondition(controller.selection == 1) }
 _ = controller.command(#selector(NSResponder.moveUp(_:)))
 precondition(controller.selection == 0 && controller.matches.first?.url == first)
+do {
+    let pasteboard = NSPasteboard.general
+    let savedItems = (pasteboard.pasteboardItems ?? []).map { original -> NSPasteboardItem in
+        let copy = NSPasteboardItem()
+        for type in original.types { if let data = original.data(forType: type) { copy.setData(data, forType: type) } }
+        return copy
+    }
+    defer { pasteboard.clearContents(); if !savedItems.isEmpty { pasteboard.writeObjects(savedItems) } }
+    let expectedCalculation = "2\(Locale.current.decimalSeparator!)38095238095238"
+    controller.field.stringValue = "100 / 42"
+    controller.controlTextDidChange(Notification(name: NSControl.textDidChangeNotification, object: controller.field))
+    precondition(controller.calculation == expectedCalculation && controller.matches.isEmpty && controller.resultCount == 1)
+    let labels = controller.list.subviews.first!.subviews.compactMap { ($0 as? NSTextField)?.stringValue }
+    precondition(labels == [expectedCalculation, "Return to copy"], "Calculation result and copy hint are missing")
+    _ = controller.command(#selector(NSResponder.moveDown(_:)))
+    _ = controller.command(#selector(NSResponder.moveUp(_:)))
+    precondition(controller.selection == 0)
+    precondition(controller.command(#selector(NSResponder.insertNewline(_:))))
+    precondition(pasteboard.string(forType: .string) == expectedCalculation, "Return did not copy the result")
+    precondition(controller.field.stringValue.isEmpty && controller.calculation == nil && controller.resultCount == 0)
+    precondition(wait { !controller.panel.isVisible }, "Copying did not dismiss the launcher")
+    controller.showLauncher(nil)
+    controller.field.stringValue = "100 /"
+    controller.refresh()
+    _ = controller.command(#selector(NSResponder.insertNewline(_:)))
+    precondition(controller.calculation == nil && controller.field.stringValue == "100 /" && controller.panel.isVisible)
+    precondition(pasteboard.string(forType: .string) == expectedCalculation, "Invalid input changed the clipboard")
+    controller.field.stringValue = "sqrt(81)"
+    controller.refresh()
+    (controller.list.subviews.first as! NSButton).performClick(nil)
+    precondition(pasteboard.string(forType: .string) == "9", "Clicking did not copy the result")
+    precondition(wait { !controller.panel.isVisible })
+    controller.showLauncher(nil)
+    controller.field.stringValue = "2 + 2"
+    controller.refresh()
+    _ = controller.command(#selector(NSResponder.cancelOperation(_:)))
+    precondition(controller.calculation == nil && controller.field.stringValue.isEmpty && controller.resultCount == 0)
+    controller.field.stringValue = "s"
+    controller.refresh()
+    precondition(controller.calculation == nil && !controller.matches.isEmpty, "App search did not resume after calculating")
+}
 controller.field.stringValue = ""
 controller.refresh()
 precondition(controller.command(#selector(NSResponder.cancelOperation(_:))))

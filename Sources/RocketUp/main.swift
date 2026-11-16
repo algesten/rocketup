@@ -231,6 +231,8 @@ final class Controller: NSObject, NSApplicationDelegate, NSWindowDelegate, NSTex
     }
     let list = NSView()
     var matches: [AppEntry] = []
+    var calculation: String?
+    var resultCount: Int { calculation == nil ? matches.count : 1 }
     var selection = 0
     var hotKey: EventHotKeyRef?
     var handler: EventHandlerRef?
@@ -371,31 +373,40 @@ final class Controller: NSObject, NSApplicationDelegate, NSWindowDelegate, NSTex
         command(commandSelector)
     }
     func refresh() {
-        matches = results(index.entries, field.stringValue); selection = min(selection, max(0, matches.count - 1)); render()
+        calculation = Calculator.result(field.stringValue)
+        matches = calculation == nil ? results(index.entries, field.stringValue) : []
+        selection = min(selection, max(0, resultCount - 1)); render()
     }
     func render() {
         list.subviews.forEach { $0.removeFromSuperview() }
-        let height = header + CGFloat(matches.count) * row
+        let items: [(name: String, detail: String?, icon: NSImage)]
+        if let calculation {
+            items = [(calculation, "Return to copy", NSImage(systemSymbolName: "equal", accessibilityDescription: "Calculation") ?? NSImage())]
+        } else {
+            items = matches.map { ($0.name, $0.duplicate ? $0.url.deletingLastPathComponent().path : nil, $0.icon) }
+        }
+        let height = header + CGFloat(items.count) * row
         var frame = panel.frame; frame.origin.y += frame.height - height; frame.size.height = height
         NSAnimationContext.runAnimationGroup { c in
             c.duration = 0.2
             c.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
             panel.animator().setFrame(frame, display: true)
         }
-        let listHeight = CGFloat(matches.count) * row
+        let listHeight = CGFloat(items.count) * row
         list.frame = NSRect(x: 10, y: panel.contentView!.bounds.height - header - listHeight + 10, width: width - 20, height: listHeight)
-        for (i, app) in matches.enumerated() {
-            let item = NSButton(frame: NSRect(x: 0, y: CGFloat(matches.count - i - 1) * row, width: width - 20, height: row))
+        for (i, result) in items.enumerated() {
+            let item = NSButton(frame: NSRect(x: 0, y: CGFloat(items.count - i - 1) * row, width: width - 20, height: row))
             item.isBordered = false; item.title = ""; item.target = self; item.action = #selector(clicked(_:)); item.tag = i; item.wantsLayer = true; item.layer?.cornerRadius = 12; item.layer?.backgroundColor = (i == selection ? NSColor.selectedContentBackgroundColor.withAlphaComponent(0.35) : .clear).cgColor
-            if i == matches.count - 1 {
+            item.setAccessibilityLabel([result.name, result.detail].compactMap { $0 }.joined(separator: ", "))
+            if i == items.count - 1 {
                 let mask = CAShapeLayer()
                 var flip = CGAffineTransform(translationX: 0, y: item.bounds.height).scaledBy(x: 1, y: -1)
                 mask.path = resultHighlightPath(in: item.bounds, bottomRadius: launcherCornerRadius - 10).copy(using: &flip)
                 item.layer?.mask = mask
             }
-            let icon = NSImageView(frame: NSRect(x: 7, y: 4, width: 46, height: 46)); icon.imageScaling = .scaleProportionallyUpOrDown; icon.image = app.icon; item.addSubview(icon)
-            let label = NSTextField(labelWithString: app.name); label.font = .systemFont(ofSize: 18, weight: .medium); label.textColor = .white; label.attributedStringValue = NSAttributedString(string: app.name, attributes: textAttributes(color: .white, font: label.font!)); label.frame = NSRect(x: 64, y: app.duplicate ? 25 : 16, width: width - 120, height: 24); item.addSubview(label)
-            if app.duplicate { let path = NSTextField(labelWithString: app.url.deletingLastPathComponent().path); path.font = .systemFont(ofSize: 11); path.textColor = NSColor.white.withAlphaComponent(0.8); path.attributedStringValue = NSAttributedString(string: path.stringValue, attributes: textAttributes(color: NSColor.white.withAlphaComponent(0.8), font: path.font!)); path.frame = NSRect(x: 64, y: 7, width: width - 120, height: 16); item.addSubview(path) }
+            let icon = NSImageView(frame: NSRect(x: 7, y: 4, width: 46, height: 46)); icon.imageScaling = .scaleProportionallyUpOrDown; icon.image = result.icon; icon.contentTintColor = .white; item.addSubview(icon)
+            let label = NSTextField(labelWithString: result.name); label.font = .systemFont(ofSize: 18, weight: .medium); label.textColor = .white; label.attributedStringValue = NSAttributedString(string: result.name, attributes: textAttributes(color: .white, font: label.font!)); label.frame = NSRect(x: 64, y: result.detail == nil ? 16 : 25, width: width - 120, height: 24); item.addSubview(label)
+            if let detail = result.detail { let subtitle = NSTextField(labelWithString: detail); subtitle.font = .systemFont(ofSize: 11); subtitle.textColor = NSColor.white.withAlphaComponent(0.8); subtitle.attributedStringValue = NSAttributedString(string: detail, attributes: textAttributes(color: NSColor.white.withAlphaComponent(0.8), font: subtitle.font!)); subtitle.frame = NSRect(x: 64, y: 7, width: width - 120, height: 16); item.addSubview(subtitle) }
             list.addSubview(item)
         }
     }
@@ -403,14 +414,24 @@ final class Controller: NSObject, NSApplicationDelegate, NSWindowDelegate, NSTex
         switch selector {
         case #selector(NSResponder.cancelOperation(_:)):
             if field.stringValue.isEmpty { hide() } else { field.stringValue = ""; selection = 0; refresh() }; return true
-        case #selector(NSResponder.moveDown(_:)): if !matches.isEmpty { selection = (selection + 1) % matches.count; render() }; return true
-        case #selector(NSResponder.moveUp(_:)): if !matches.isEmpty { selection = (selection + matches.count - 1) % matches.count; render() }; return true
-        case #selector(NSResponder.insertNewline(_:)): launch(selection); return true
+        case #selector(NSResponder.moveDown(_:)): if resultCount > 0 { selection = (selection + 1) % resultCount; render() }; return true
+        case #selector(NSResponder.moveUp(_:)): if resultCount > 0 { selection = (selection + resultCount - 1) % resultCount; render() }; return true
+        case #selector(NSResponder.insertNewline(_:)): activateResult(selection); return true
         default: return false
         }
     }
-    @objc func clicked(_ sender: NSButton) { launch(sender.tag) }
-    func launch(_ i: Int) { guard matches.indices.contains(i) else { return }; let url = matches[i].url; field.stringValue = ""; refresh(); hide(); NSWorkspace.shared.openApplication(at: url, configuration: NSWorkspace.OpenConfiguration()) }
+    @objc func clicked(_ sender: NSButton) { activateResult(sender.tag) }
+    func activateResult(_ i: Int) {
+        if let calculation {
+            guard i == 0 else { return }
+            NSPasteboard.general.clearContents()
+            guard NSPasteboard.general.setString(calculation, forType: .string) else { NSSound.beep(); return }
+        } else {
+            guard matches.indices.contains(i) else { return }
+            NSWorkspace.shared.openApplication(at: matches[i].url, configuration: NSWorkspace.OpenConfiguration())
+        }
+        field.stringValue = ""; selection = 0; refresh(); hide()
+    }
     @objc func openSettings() { hide(); if settings == nil { settings = SettingsWindow(controller: self) }; settings?.center(); settings?.makeKeyAndOrderFront(nil); NSApp.activate(ignoringOtherApps: true) }
 }
 final class ShortcutRecorder: NSButton {

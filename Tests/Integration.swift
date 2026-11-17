@@ -27,7 +27,8 @@ let root = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent(U
 try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
 defer { try? FileManager.default.removeItem(at: root) }
 try fixture(root, "Google Chrome")
-try fixture(root, "Not an App", type: "XPC!")
+try fixture(root, "Broken App")
+try FileManager.default.removeItem(at: root.appendingPathComponent("Broken App.app/Contents/MacOS/run"))
 let index = Index(roots: [root.path])
 precondition(wait { index.entries.count == 1 }, "Initial app discovery failed: \(index.entries.map(\.name))")
 precondition(index.entries[0].name == "Google Chrome")
@@ -38,10 +39,15 @@ precondition(wait { index.entries.count == 1 }, "Removed app not observed")
 let nestedRoot = root.appendingPathComponent("NestedTest")
 try FileManager.default.createDirectory(at: nestedRoot, withIntermediateDirectories: true)
 try fixture(nestedRoot, "First")
+try fixture(nestedRoot, "Passwords", type: "XPC!")
+try fixture(nestedRoot, "Other Package Type", type: "BNDL")
 try FileManager.default.createSymbolicLink(at: nestedRoot.appendingPathComponent("Alias.app"), withDestinationURL: nestedRoot.appendingPathComponent("First.app"))
 try fixture(nestedRoot.appendingPathComponent("Suite"), "Nested")
 let nestedIndex = Index(roots: [nestedRoot.path])
 precondition(wait { nestedIndex.entries.contains { $0.name == "Nested" } }, "An app nested in a regular folder was skipped")
+precondition(nestedIndex.entries.contains { $0.url.lastPathComponent == "Alias.app" }, "A symlink to an app was skipped")
+precondition(results(nestedIndex.entries, "pass").contains { $0.name == "Passwords" }, "An XPC-backed app was skipped")
+precondition(results(nestedIndex.entries, "Other Package").contains { $0.name == "Other Package Type" }, "An app recognized by macOS was skipped because of its package type")
 let missingRoot = root.appendingPathComponent("Applications")
 let missingIndex = Index(roots: [missingRoot.path])
 try fixture(missingRoot, "Later")
@@ -49,6 +55,10 @@ precondition(wait { missingIndex.entries.contains { $0.name == "Later" } }, "Cre
 let installed = Index()
 precondition(wait { !installed.entries.isEmpty }, "No installed apps discovered in the sandbox")
 precondition(installed.entries.contains { $0.name == "Safari" }, "Safari not discovered in the sandbox")
+let passwordsPath = "/System/Applications/Passwords.app"
+if FileManager.default.fileExists(atPath: passwordsPath) {
+    precondition(results(installed.entries, "Passwords").contains { $0.url.path == passwordsPath }, "Passwords not found in sandboxed search")
+}
 let keychainPath = "/System/Library/CoreServices/Applications/Keychain Access.app"
 if FileManager.default.fileExists(atPath: keychainPath) {
     precondition(results(installed.entries, "keychain").contains { $0.url.path == keychainPath }, "Keychain Access not found in sandboxed search")

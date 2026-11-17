@@ -120,7 +120,8 @@ final class Index {
                             if let values = try? url.resourceValues(forKeys: [.isDirectoryKey, .isSymbolicLinkKey]), values.isDirectory == true, values.isSymbolicLink != true { directories.append(url) }
                             continue
                         }
-                        guard let bundle = Bundle(url: url), bundle.object(forInfoDictionaryKey: "CFBundlePackageType") as? String == "APPL", let executable = bundle.executableURL, FileManager.default.fileExists(atPath: executable.path) else { continue }
+                        // Let macOS classify apps: Passwords, for example, has package type XPC!.
+                        guard (try? url.resolvingSymlinksInPath().resourceValues(forKeys: [.isApplicationKey]))?.isApplication == true, let bundle = Bundle(url: url), let executable = bundle.executableURL, FileManager.default.fileExists(atPath: executable.path) else { continue }
                         let display = FileManager.default.displayName(atPath: url.path).replacingOccurrences(of: ".app", with: "", options: [.anchored, .backwards, .caseInsensitive])
                         let names = [display, bundle.localizedInfoDictionary?["CFBundleDisplayName"] as? String, bundle.localizedInfoDictionary?["CFBundleName"] as? String, bundle.infoDictionary?["CFBundleDisplayName"] as? String, bundle.infoDictionary?["CFBundleName"] as? String, url.deletingPathExtension().lastPathComponent].compactMap { $0 }.filter { !$0.isEmpty }
                         found.append(AppEntry(url: url, name: display, names: names, local: root == userHome + "/Applications", icon: NSWorkspace.shared.icon(forFile: url.path)))
